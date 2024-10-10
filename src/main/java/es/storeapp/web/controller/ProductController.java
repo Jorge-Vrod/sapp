@@ -37,6 +37,8 @@ public class ProductController {
     
     @GetMapping(value = {Constants.PRODUCTS_ENDPOINT})
     public String doGetProductsPage(@ModelAttribute ProductSearchForm searchForm, Model model) {
+        /* VULN : Unsanitized input from an HTTP parameter flows into createQuery,
+        where it is used in an SQL query. This may result in an SQL Injection vulnerability. */
         List<Product> products = productService.findProducts(searchForm.getCategory());
         List<Category> categories = productService.findAllCategories();
         model.addAttribute(Constants.PRODUCTS, products);

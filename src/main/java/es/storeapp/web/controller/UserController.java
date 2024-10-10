@@ -154,6 +154,7 @@ public class UserController {
             return errorHandlingUtils.handleAuthenticationException(ex, loginForm.getEmail(), 
                     Constants.LOGIN_PAGE, model, locale);
         }
+        /* VULN : Change this code to not perform redirects based on user-controlled data. */
         if (next != null && next.trim().length() > 0) {
             return Constants.SEND_REDIRECT + next;
         }
@@ -174,6 +175,7 @@ public class UserController {
         }
         User user;
         try {
+            /* VULN : Change this code to not construct the path from user-controlled data. */
             user = userService.create(userProfileForm.getName(), userProfileForm.getEmail(),
                     userProfileForm.getPassword(), userProfileForm.getAddress(),
                     userProfileForm.getImage() != null ? userProfileForm.getImage().getOriginalFilename() : null,
@@ -266,6 +268,8 @@ public class UserController {
         try {
             
             response.setHeader(Constants.CONTENT_TYPE_HEADER, MediaType.APPLICATION_OCTET_STREAM_VALUE);
+            /* VULN : Unsanitized input from an HTTP parameter flows into setHeader and reaches an HTTP header returned to the user.
+            This may allow a malicious input that contain CR/LF to split the http response into two responses and the second response to be controlled by the attacker. This may be used to mount a range of attacks such as cross-site scripting or cache poisoning. */
             response.setHeader(Constants.CONTENT_DISPOSITION_HEADER,
                     MessageFormat.format(Constants.CONTENT_DISPOSITION_HEADER_VALUE, user.getEmail(), user.getImage()));
             
@@ -326,7 +330,9 @@ public class UserController {
             String serverName = request.getServerName();
             Integer portNumber = request.getServerPort();
             String contextPath = request.getContextPath();
-            
+
+            /* VULN : Unsanitized input from an HTTP parameter flows into createQuery, where it is used in an SQL query.
+            This may result in an SQL Injection vulnerability. */
             userService.sendResetPasswordEmail(email, MessageFormat.format(Constants.URL_FORMAT, scheme, 
                     serverName, portNumber.toString(), contextPath, Constants.RESET_PASSWORD_ENDPOINT), locale);
             

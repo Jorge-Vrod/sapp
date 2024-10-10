@@ -86,6 +86,7 @@ public class UserService {
 
             System.setProperty("mail.smtp.ssl.protocols", "TLSv1.2");
 
+            /* VULN : A call to setSSLCheckServerIdentity is missing - the server identity will not be checked when sending the email. A man-in-the-middle attacker might be able to intercept it. */
             HtmlEmail htmlEmail = new HtmlEmail();
             htmlEmail.setHostName(configurationParameters.getMailHost());
             htmlEmail.setSmtpPort(configurationParameters.getMailPort());

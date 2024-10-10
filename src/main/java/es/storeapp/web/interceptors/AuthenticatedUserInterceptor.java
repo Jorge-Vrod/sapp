@@ -16,6 +16,8 @@ public class AuthenticatedUserInterceptor implements HandlerInterceptor {
 
         HttpSession session = request.getSession();
         if(session.getAttribute(Constants.USER_SESSION) == null) {
+            /* VULN : Unsanitized input from the request URL flows into sendRedirect, where it is used as an URL to redirect the user.
+            This may result in an Open Redirect vulnerability. */
             response.sendRedirect(request.getContextPath() + Constants.LOGIN_ENDPOINT +
                     Constants.PARAMS + Constants.NEXT_PAGE + Constants.PARAM_VALUE + request.getRequestURL());
             return false;

@@ -36,11 +36,14 @@ public class AutoLoginInterceptor implements HandlerInterceptor {
                     continue;
                 }
 
-                //VULN javaDecoder
                 Base64.Decoder decoder = Base64.getDecoder();
                 XMLDecoder xmlDecoder = new XMLDecoder(new ByteArrayInputStream(decoder.decode(cookieValue)));
                 UserInfo userInfo = (UserInfo) xmlDecoder.readObject();
+                /* VULN : Unsanitized input from cookies flows into createQuery, where it is used in an SQL query. This may result in an SQL Injection vulnerability. */
+
                 User user = userService.findByEmail(userInfo.getEmail());
+
+                /* VULN : An attacker might be able to detect the value of the password due to the exposure of comparison timing. When the functions Arrays.equals() or String.equals() are called, they will exit earlier if fewer bytes are matched. Use password encoder such as BCrypt for comparing passwords. */
                 if (user != null && user.getPassword().equals(userInfo.getPassword())) {
                     session.setAttribute(Constants.USER_SESSION, user);
                 }
