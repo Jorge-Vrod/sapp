@@ -11,16 +11,25 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.1.0</version>
+        <version>3.2.10</version>
     </parent>
 
     <dependencies>
         
         <!-- Java -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.11.0</version>
+        </dependency>
         
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -218,8 +227,8 @@
                 <configuration>
                     <driver>org.apache.derby.jdbc.EmbeddedDriver</driver>
                     <url>jdbc:derby:work/database;create=true</url>
-                    <username>app</username>
-                    <password>secr3t</password>
+                    <username>${db.username}</username>
+                    <password>${db.password}</password>
                     <autocommit>true</autocommit>
                     <onError>continue</onError>
                     <srcFiles>

@@ -25,17 +25,19 @@ import org.mindrot.jbcrypt.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
 
+    @Autowired
+    PasswordEncoder passwordEncoder;
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
-    // VULN HARDCODED SALT
-    private static final String SALT = "$2a$10$MN0gK0ldpCgN9jx6r0VYQO";
 
     @Autowired
     ConfigurationParameters configurationParameters;
@@ -66,8 +68,8 @@ public class UserService {
         if (!userRepository.existsUser(email)) {
             throw exceptionGenerationUtils.toAuthenticationException(Constants.AUTH_INVALID_USER_MESSAGE, email);
         }
-        User user = userRepository.findByEmailAndPassword(email, BCrypt.hashpw(clearPassword, SALT));
-        if (user == null) {
+        User user = userRepository.findByEmail(email);
+        if (user == null || !passwordEncoder.matches(clearPassword, user.getPassword())) {
             throw exceptionGenerationUtils.toAuthenticationException(Constants.AUTH_INVALID_PASSWORD_MESSAGE, email);
         }
         return user;
@@ -86,7 +88,7 @@ public class UserService {
 
             System.setProperty("mail.smtp.ssl.protocols", "TLSv1.2");
 
-            /* VULN : A call to setSSLCheckServerIdentity is missing - the server identity will not be checked when sending the email. A man-in-the-middle attacker might be able to intercept it. */
+            /* FIXED: Set SSL check for server identity to ensure server identity verification. */
             HtmlEmail htmlEmail = new HtmlEmail();
             htmlEmail.setHostName(configurationParameters.getMailHost());
             htmlEmail.setSmtpPort(configurationParameters.getMailPort());
@@ -95,7 +97,11 @@ public class UserService {
                     configurationParameters.getMailPassword());
             htmlEmail.setSSLOnConnect(configurationParameters.getMailSslEnable() != null
                     && configurationParameters.getMailSslEnable());
-            if (configurationParameters.getMailStartTlsEnable()) {
+
+            /* FIX: Ensure that the server identity is checked to prevent man-in-the-middle attacks */
+            htmlEmail.setSSLCheckServerIdentity(true);
+
+            if (Boolean.TRUE.equals(configurationParameters.getMailStartTlsEnable())) {
                 htmlEmail.setStartTLSEnabled(true);
                 htmlEmail.setStartTLSRequired(true);
             }
@@ -124,15 +130,20 @@ public class UserService {
         userRepository.update(user);
     }
 
+
+
     @Transactional
-    public User create(String name, String email, String password, String address,
-            String image, byte[] imageContents) throws DuplicatedResourceException {
+    public User create(String name, String email, String rawPassword, String address, String image, byte[] imageContents)
+            throws DuplicatedResourceException {
         if (userRepository.findByEmail(email) != null) {
             throw exceptionGenerationUtils.toDuplicatedResourceException(Constants.EMAIL_FIELD, email,
                     Constants.DUPLICATED_INSTANCE_MESSAGE);
         }
-        User user = userRepository.create(new User(name, email, BCrypt.hashpw(password, SALT), address, image));
+
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+        User user = userRepository.create(new User(name, email, encodedPassword, address, image));
         saveProfileImage(user.getUserId(), image, imageContents);
+
         return user;
     }
 
@@ -148,7 +159,7 @@ public class UserService {
         user.setName(name);
         user.setEmail(email);
         user.setAddress(address);
-        if (image != null && image.trim().length() > 0 && imageContents != null) {
+        if (image != null && !image.trim().isEmpty() && imageContents != null) {
             try {
                 deleteProfileImage(id, user.getImage());
             } catch (Exception ex) {
@@ -161,23 +172,21 @@ public class UserService {
     }
 
     @Transactional
-    public User changePassword(Long id, String oldPassword, String password)
+    public User changePassword(Long id, String oldPassword, String newPassword)
             throws InstanceNotFoundException, AuthenticationException {
         User user = userRepository.findById(id);
         if (user == null) {
-            throw exceptionGenerationUtils.toAuthenticationException(
-                    Constants.AUTH_INVALID_USER_MESSAGE, id.toString());
+            throw exceptionGenerationUtils.toAuthenticationException(Constants.AUTH_INVALID_USER_MESSAGE, id.toString());
         }
-        if (userRepository.findByEmailAndPassword(user.getEmail(), BCrypt.hashpw(oldPassword, SALT)) == null) {
-            throw exceptionGenerationUtils.toAuthenticationException(Constants.AUTH_INVALID_PASSWORD_MESSAGE,
-                    id.toString());
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw exceptionGenerationUtils.toAuthenticationException(Constants.AUTH_INVALID_PASSWORD_MESSAGE, id.toString());
         }
-        user.setPassword(BCrypt.hashpw(password, SALT));
+        user.setPassword(passwordEncoder.encode(newPassword));
         return userRepository.update(user);
     }
 
     @Transactional
-    public User changePassword(String email, String password, String token) throws AuthenticationException {
+    public User changePassword(String email, String newPassword, String token) throws AuthenticationException {
         User user = userRepository.findByEmail(email);
         if (user == null) {
             throw exceptionGenerationUtils.toAuthenticationException(Constants.AUTH_INVALID_USER_MESSAGE, email);
@@ -185,7 +194,7 @@ public class UserService {
         if (user.getResetPasswordToken() == null || !user.getResetPasswordToken().equals(token)) {
             throw exceptionGenerationUtils.toAuthenticationException(Constants.AUTH_INVALID_TOKEN_MESSAGE, email);
         }
-        user.setPassword(BCrypt.hashpw(password, SALT));
+        user.setPassword(passwordEncoder.encode(newPassword));
         user.setResetPasswordToken(null);
         return userRepository.update(user);
     }
@@ -215,7 +224,7 @@ public class UserService {
     }
 
     private void saveProfileImage(Long id, String image, byte[] imageContents) {
-        if (image != null && image.trim().length() > 0 && imageContents != null) {
+        if (image != null && !image.trim().isEmpty() && imageContents != null) {
             File userDir = new File(resourcesDir, id.toString());
             userDir.mkdirs();
             File profilePicture = new File(userDir, image);
@@ -228,7 +237,7 @@ public class UserService {
     }
 
     private void deleteProfileImage(Long id, String image) throws IOException {
-        if (image != null && image.trim().length() > 0) {
+        if (image != null && !image.trim().isEmpty()) {
             File userDir = new File(resourcesDir, id.toString());
             File profilePicture = new File(userDir, image);
             Files.delete(profilePicture.toPath());
@@ -236,7 +245,7 @@ public class UserService {
     }
 
     private byte[] getProfileImage(Long id, String image) throws IOException {
-        if (image != null && image.trim().length() > 0) {
+        if (image != null && !image.trim().isEmpty()) {
             File userDir = new File(resourcesDir, id.toString());
             File profilePicture = new File(userDir, image);
             try (FileInputStream input = new FileInputStream(profilePicture)) {

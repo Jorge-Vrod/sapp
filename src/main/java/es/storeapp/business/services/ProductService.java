@@ -47,7 +47,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<Product> findProducts(String category) {
-        if (category == null || category.length() == 0) {
+        if (category == null || category.isEmpty()) {
             return productRepository.findAll(Constants.PRICE_FIELD);
         } else {
             return productRepository.findByCategory(category, Constants.PRICE_FIELD);

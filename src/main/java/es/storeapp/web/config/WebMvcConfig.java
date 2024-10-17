@@ -11,6 +11,7 @@ import es.storeapp.web.interceptors.ShoppingCartInterceptor;
 import java.io.File;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -20,6 +21,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Autowired
     ConfigurationParameters configurationParameters;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     
     @Autowired
     private UserService userService;
@@ -28,7 +32,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         
         /* AutoLogin detecting the persistent cookie */
-        registry.addInterceptor(new AutoLoginInterceptor(userService))
+        registry.addInterceptor(new AutoLoginInterceptor(userService, passwordEncoder))
                 .addPathPatterns(Constants.ALL_ENDPOINTS)
                 .excludePathPatterns(Constants.LIBS_RESOURCES)
                 .excludePathPatterns(Constants.EXTERNAL_RESOURCES);

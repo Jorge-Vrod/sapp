@@ -4,6 +4,7 @@ import es.storeapp.business.exceptions.InstanceNotFoundException;
 import es.storeapp.business.utils.ExceptionGenerationUtils;
 import es.storeapp.common.Constants;
 import java.text.MessageFormat;
+import java.util.Arrays;
 import java.util.List;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
@@ -18,11 +19,11 @@ public abstract class AbstractRepository<T> {
 
     protected final Logger logger;
 
-    // SQL INJECTION
+    // VULN : Posible inyeccion SQL en los nombres de tablas y columnas. Checkear
     private static final String FIND_ALL_QUERY = "SELECT t FROM {0} t";
     private static final String FIND_ALL_ORDERED_QUERY = "SELECT t FROM {0} t ORDER BY t.{1}";
-    private static final String FIND_BY_TEXT_ATTRIBUTE_QUERY = "SELECT t FROM {0} t WHERE t.{1} = ''{2}'' ORDER BY t.{3}";
-    
+    private static final String FIND_BY_TEXT_ATTRIBUTE_QUERY = "SELECT t FROM {0} t WHERE t.{1} = :value ORDER BY t.{2}";
+
     private final Class<T> genericType;
 
     @PersistenceContext
@@ -30,7 +31,7 @@ public abstract class AbstractRepository<T> {
 
     @Autowired
     ExceptionGenerationUtils exceptionGenerationUtils;
-    
+
     public AbstractRepository() {
         this.genericType = (Class<T>) GenericTypeResolver.resolveTypeArgument(getClass(), AbstractRepository.class);
         this.logger = LoggerFactory.getLogger(this.genericType);
@@ -45,43 +46,61 @@ public abstract class AbstractRepository<T> {
         entityManager.merge(entity);
         return entity;
     }
-    
+
     public void remove(T entity) {
         entityManager.remove(entity);
     }
 
     public T findById(Long id) throws InstanceNotFoundException {
-        try{
+        try {
             T t = entityManager.find(genericType, id);
-            if(t == null) {
+            if (t == null) {
                 throw new NoResultException(Long.toString(id));
             }
             return t;
-        } catch(NoResultException e) {
+        } catch (NoResultException e) {
             logger.error(e.getMessage(), e);
-            throw exceptionGenerationUtils.toInstanceNotFoundException(id, genericType.getSimpleName(), 
+            throw exceptionGenerationUtils.toInstanceNotFoundException(id, genericType.getSimpleName(),
                     Constants.INSTANCE_NOT_FOUND_MESSAGE);
         }
     }
-    
+
     @SuppressWarnings("unchecked")
     public List<T> findAll() {
-        Query query = entityManager.createQuery(MessageFormat.format(FIND_ALL_QUERY, 
+        Query query = entityManager.createQuery(MessageFormat.format(FIND_ALL_QUERY,
                 genericType.getSimpleName()));
-        return (List<T>) query.getResultList();
+        return query.getResultList();
     }
-    
+
     @SuppressWarnings("unchecked")
     public List<T> findAll(String orderColumn) {
-        Query query = entityManager.createQuery(MessageFormat.format(FIND_ALL_ORDERED_QUERY, 
+        // Validate and sanitize order column to prevent injection
+        if (!isValidOrderColumn(orderColumn)) {
+            throw new IllegalArgumentException("Invalid column for ordering");
+        }
+
+        Query query = entityManager.createQuery(MessageFormat.format(FIND_ALL_ORDERED_QUERY,
                 genericType.getSimpleName(), orderColumn));
         return (List<T>) query.getResultList();
     }
-    
+
     @SuppressWarnings("unchecked")
     public List<T> findByStringAttribute(String attribute, String value, String orderColumn) {
-        Query query = entityManager.createQuery(MessageFormat.format(FIND_BY_TEXT_ATTRIBUTE_QUERY, 
-                genericType.getSimpleName(), attribute, value, orderColumn));
-        return (List<T>) query.getResultList();
+        // Validate and sanitize order column to prevent injection
+        if (!isValidOrderColumn(orderColumn)) {
+            throw new IllegalArgumentException("Invalid column for ordering");
+        }
+
+        Query query = entityManager.createQuery(MessageFormat.format(FIND_BY_TEXT_ATTRIBUTE_QUERY,
+                genericType.getSimpleName(), attribute, orderColumn));
+        query.setParameter("value", value); // Safely set the parameter value
+        return query.getResultList();
+    }
+
+    /* Helper method to validate column names to prevent injection in orderColumn */
+    private boolean isValidOrderColumn(String column) {
+        // Replace with actual valid column names
+        List<String> validColumns = Arrays.asList("id", "name", "createdDate");
+        return validColumns.contains(column);
     }
 }

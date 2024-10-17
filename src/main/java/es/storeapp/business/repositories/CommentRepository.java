@@ -6,25 +6,27 @@ import jakarta.persistence.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class CommentRepository extends AbstractRepository<Comment>{
+public class CommentRepository extends AbstractRepository<Comment> {
 
-    // SQL INJECTION
-    private static final String COUNT_BY_USER_AND_PRODUCT_QUERY = 
-        "SELECT COUNT(*) FROM Comment c WHERE c.user.id = {0} and c.product.id = {1}";
-    
-    private static final String FIND_BY_USER_AND_PRODUCT_QUERY = 
-        "SELECT c FROM Comment c WHERE c.user.id = {0} and c.product.id = {1}";
-    
+    // Safe queries, using placeholders for parameterized queries
+    private static final String COUNT_BY_USER_AND_PRODUCT_QUERY =
+            "SELECT COUNT(c) FROM Comment c WHERE c.user.id = :userId AND c.product.id = :productId";
+
+    private static final String FIND_BY_USER_AND_PRODUCT_QUERY =
+            "SELECT c FROM Comment c WHERE c.user.id = :userId AND c.product.id = :productId";
+
+    // Use parameterized queries to prevent SQL injection
     public Integer countByUserAndProduct(Long userId, Long productId) {
-        Query query = entityManager.createQuery(MessageFormat
-            .format(COUNT_BY_USER_AND_PRODUCT_QUERY, userId, productId));
-        return (Integer) query.getSingleResult();
+        Query query = entityManager.createQuery(COUNT_BY_USER_AND_PRODUCT_QUERY);
+        query.setParameter("userId", userId);  // Set the userId safely
+        query.setParameter("productId", productId);  // Set the productId safely
+        return ((Long) query.getSingleResult()).intValue();
     }
-    
+
     public Comment findByUserAndProduct(Long userId, Long productId) {
-        Query query = entityManager.createQuery(MessageFormat
-            .format(FIND_BY_USER_AND_PRODUCT_QUERY, userId, productId));
+        Query query = entityManager.createQuery(FIND_BY_USER_AND_PRODUCT_QUERY);
+        query.setParameter("userId", userId);  // Set the userId safely
+        query.setParameter("productId", productId);  // Set the productId safely
         return (Comment) query.getSingleResult();
     }
-    
 }

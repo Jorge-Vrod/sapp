@@ -2,19 +2,21 @@ package es.storeapp.web.forms;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Email;
 
 public class LoginForm {
-    
-    @NotNull
-    @Size(min=1)
+
+    @NotNull(message = "Email cannot be null")
+    @Size(min = 1, message = "Email cannot be empty")
+    @Email(message = "Invalid email format")
     private String email;
-    
-    @NotNull
-    @Size(min=1)
+
+    @NotNull(message = "Password cannot be null")
+    @Size(min = 1, message = "Password cannot be empty")
     private String password;
 
     private Boolean rememberMe;
-    
+
     public String getEmail() {
         return email;
     }
@@ -38,7 +40,4 @@ public class LoginForm {
     public void setRememberMe(Boolean rememberMe) {
         this.rememberMe = rememberMe;
     }
-    
-    
-    
 }

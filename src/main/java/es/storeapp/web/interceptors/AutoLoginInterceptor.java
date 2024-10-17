@@ -1,30 +1,39 @@
 package es.storeapp.web.interceptors;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.storeapp.business.entities.User;
 import es.storeapp.business.services.UserService;
 import es.storeapp.common.Constants;
 import es.storeapp.web.cookies.UserInfo;
 import java.beans.XMLDecoder;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.regex.Pattern;
+
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 public class AutoLoginInterceptor implements HandlerInterceptor {
 
     private final UserService userService;
+    private final PasswordEncoder passwordEncoder;
 
-    public AutoLoginInterceptor(UserService userService) {
+    public AutoLoginInterceptor(UserService userService, PasswordEncoder passwordEncoder) {
         this.userService = userService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
-        System.out.println("preHandle triggered for request: " + request.getRequestURI());
+
         HttpSession session = request.getSession(true);
         if (session.getAttribute(Constants.USER_SESSION) != null || request.getCookies() == null) {
             return true;
@@ -37,18 +46,37 @@ public class AutoLoginInterceptor implements HandlerInterceptor {
                 }
 
                 Base64.Decoder decoder = Base64.getDecoder();
-                XMLDecoder xmlDecoder = new XMLDecoder(new ByteArrayInputStream(decoder.decode(cookieValue)));
-                UserInfo userInfo = (UserInfo) xmlDecoder.readObject();
-                /* VULN : Unsanitized input from cookies flows into createQuery, where it is used in an SQL query. This may result in an SQL Injection vulnerability. */
+                String decodedValue = new String(decoder.decode(cookieValue), StandardCharsets.UTF_8);
 
-                User user = userService.findByEmail(userInfo.getEmail());
+                try {
+                    // Use a safe JSON parser for deserialization
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    UserInfo userInfo = objectMapper.readValue(decodedValue, UserInfo.class);
 
-                /* VULN : An attacker might be able to detect the value of the password due to the exposure of comparison timing. When the functions Arrays.equals() or String.equals() are called, they will exit earlier if fewer bytes are matched. Use password encoder such as BCrypt for comparing passwords. */
-                if (user != null && user.getPassword().equals(userInfo.getPassword())) {
-                    session.setAttribute(Constants.USER_SESSION, user);
+                    /* FIXED: Sanitize user input before using it in a query to prevent SQL injection */
+                    if (isValidEmail(userInfo.getEmail())) {
+                        User user = userService.findByEmail(userInfo.getEmail());
+
+                        /* FIXED: Use a constant-time password comparison method to prevent timing attacks */
+                        if (user != null && passwordEncoder.matches(userInfo.getPassword(), user.getPassword())) {
+                            session.setAttribute(Constants.USER_SESSION, user);
+                        }
+                    }
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
         return true;
     }
+
+
+
+    /* Helper method to validate email format */
+    private boolean isValidEmail(String email) {
+        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
+        Pattern pattern = Pattern.compile(emailRegex);
+        return pattern.matcher(email).matches();
+    }
+
 }

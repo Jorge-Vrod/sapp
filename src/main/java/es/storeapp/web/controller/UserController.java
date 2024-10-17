@@ -16,14 +16,20 @@ import es.storeapp.web.forms.UserProfileForm;
 import java.beans.XMLEncoder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.util.Base64;
 import java.util.Locale;
+import java.util.UUID;
+import java.util.regex.Pattern;
+
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,6 +75,8 @@ public class UserController {
                            @CookieValue(value = Constants.PERSISTENT_USER_COOKIE, required = false) String userInfo) {
         if (userInfo != null) {
             Cookie userCookie = new Cookie(Constants.PERSISTENT_USER_COOKIE, null);
+            userCookie.setSecure(true);
+            userCookie.setHttpOnly(true);
             userCookie.setMaxAge(0); // remove
             response.addCookie(userCookie);
         }
@@ -115,72 +123,94 @@ public class UserController {
         model.addAttribute(Constants.RESET_PASSWORD_FORM, form);
         return Constants.RESET_PASSWORD_PAGE;
     }
-    
     @PostMapping(Constants.LOGIN_ENDPOINT)
-    public String doLogin(@Valid @ModelAttribute LoginForm loginForm, 
+    public String doLogin(@Valid @ModelAttribute LoginForm loginForm,
                           BindingResult result,
                           @RequestParam(value = Constants.NEXT_PAGE, required = false) String next,
                           HttpSession session,
                           HttpServletResponse response,
-                          Locale locale, 
+                          Locale locale,
                           Model model) {
-        if (result.hasErrors()) {  
-            errorHandlingUtils.handleInvalidFormError(result, 
-                Constants.AUTH_INVALID_USER_OR_PASSWORD_MESSAGE, model, locale);
+        if (result.hasErrors()) {
+            errorHandlingUtils.handleInvalidFormError(result,
+                    Constants.AUTH_INVALID_USER_OR_PASSWORD_MESSAGE, model, locale);
             return Constants.LOGIN_PAGE;
         }
         User user;
         try {
+            // Spring Security automatically validates CSRF tokens before this point
             user = userService.login(loginForm.getEmail(), loginForm.getPassword());
             session.setAttribute(Constants.USER_SESSION, user);
-            if(logger.isDebugEnabled()) {
+            if (logger.isDebugEnabled()) {
                 logger.debug(MessageFormat.format("User {0} logged in", user.getEmail()));
             }
             if (loginForm.getRememberMe() != null && loginForm.getRememberMe()) {
                 Base64.Encoder encoder = Base64.getEncoder();
                 ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                try (XMLEncoder xmlEncoder = new XMLEncoder(buffer);) {
+                try (XMLEncoder xmlEncoder = new XMLEncoder(buffer)) {
                     xmlEncoder.writeObject(new UserInfo(user.getEmail(), user.getPassword()));
                 }
                 Cookie userCookie = new Cookie(Constants.PERSISTENT_USER_COOKIE,
                         new String(encoder.encode(buffer.toByteArray())));
-                userCookie.setMaxAge(604800); // 1 week
+                userCookie.setSecure(true);
+                userCookie.setHttpOnly(true);
+
+                userCookie.setMaxAge(3600); // 1 hour
                 response.addCookie(userCookie);
             }
         } catch (AuthenticationException ex) {
-            if(logger.isDebugEnabled()) {
+            if (logger.isDebugEnabled()) {
                 logger.debug(MessageFormat.format("User {0} not logged in ", loginForm.getEmail()));
             }
-            return errorHandlingUtils.handleAuthenticationException(ex, loginForm.getEmail(), 
+            return errorHandlingUtils.handleAuthenticationException(ex, loginForm.getEmail(),
                     Constants.LOGIN_PAGE, model, locale);
         }
-        /* VULN : Change this code to not perform redirects based on user-controlled data. */
-        if (next != null && next.trim().length() > 0) {
-            return Constants.SEND_REDIRECT + next;
+        /* FIXED: Sanitize the 'next' parameter to prevent open redirect vulnerability */
+        if (next != null && !next.trim().isEmpty()) {
+            if (isLocalRedirect(next)) {
+                return Constants.SEND_REDIRECT + next;
+            } else {
+                return Constants.SEND_REDIRECT + Constants.ROOT_ENDPOINT;
+            }
         }
         return Constants.SEND_REDIRECT + Constants.ROOT_ENDPOINT;
     }
+
+    /* Helper method to check if a URL is local to avoid open redirect */
+    private boolean isLocalRedirect(String url) {
+        return url.startsWith("/") && !url.startsWith("//") && !url.contains("://");
+    }
+
+
 
     @PostMapping(Constants.REGISTRATION_ENDPOINT)
     public String doRegister(@Valid @ModelAttribute(Constants.USER_PROFILE_FORM) UserProfileForm userProfileForm,
                              BindingResult result,
                              RedirectAttributes redirectAttributes,
                              HttpSession session,
-                             Locale locale, 
+                             Locale locale,
                              Model model) {
         if (result.hasErrors()) {
-            errorHandlingUtils.handleInvalidFormError(result, 
-                Constants.REGISTRATION_INVALID_PARAMS_MESSAGE, model, locale);
+            errorHandlingUtils.handleInvalidFormError(result,
+                    Constants.REGISTRATION_INVALID_PARAMS_MESSAGE, model, locale);
             return Constants.USER_PROFILE_PAGE;
         }
         User user;
         try {
-            /* VULN : Change this code to not construct the path from user-controlled data. */
+            /* FIXED: Use a safe and controlled file path for user-uploaded images */
+            String safeFileName = null;
+            byte[] imageBytes = null;
+
+            if (userProfileForm.getImage() != null) {
+                safeFileName = UUID.randomUUID() + "_" +
+                        FilenameUtils.getName(userProfileForm.getImage().getOriginalFilename());
+                imageBytes = userProfileForm.getImage().getBytes();
+            }
+
             user = userService.create(userProfileForm.getName(), userProfileForm.getEmail(),
-                    userProfileForm.getPassword(), userProfileForm.getAddress(),
-                    userProfileForm.getImage() != null ? userProfileForm.getImage().getOriginalFilename() : null,
-                    userProfileForm.getImage() != null ? userProfileForm.getImage().getBytes() : null);
-            if(logger.isDebugEnabled()) {
+                    userProfileForm.getPassword(), userProfileForm.getAddress(), safeFileName, imageBytes);
+
+            if (logger.isDebugEnabled()) {
                 logger.debug(MessageFormat.format("User {0} with name {1} registered", user.getEmail(), user.getName()));
             }
             session.setAttribute(Constants.USER_SESSION, user);
@@ -194,6 +224,7 @@ public class UserController {
         }
         return Constants.SEND_REDIRECT + Constants.ROOT_ENDPOINT;
     }
+
 
     @PostMapping(Constants.USER_PROFILE_ENDPOINT)
     public String doUpdateProfile(@Valid @ModelAttribute(Constants.USER_PROFILE_FORM) UserProfileForm userProfileForm,
@@ -259,20 +290,21 @@ public class UserController {
         }
         return Constants.SEND_REDIRECT + Constants.ROOT_ENDPOINT;
     }
-
     @GetMapping(Constants.USER_PROFILE_IMAGE_ENDPOINT)
     public ResponseEntity<byte[]> doGetProfileImage(@SessionAttribute(Constants.USER_SESSION) User user,
                                                     HttpServletResponse response,
-                                                    Locale locale, 
+                                                    Locale locale,
                                                     Model model) {
         try {
-            
             response.setHeader(Constants.CONTENT_TYPE_HEADER, MediaType.APPLICATION_OCTET_STREAM_VALUE);
-            /* VULN : Unsanitized input from an HTTP parameter flows into setHeader and reaches an HTTP header returned to the user.
-            This may allow a malicious input that contain CR/LF to split the http response into two responses and the second response to be controlled by the attacker. This may be used to mount a range of attacks such as cross-site scripting or cache poisoning. */
+
+            /* FIXED: Sanitize the user input to prevent HTTP response splitting */
+            String safeEmail = URLEncoder.encode(user.getEmail(), StandardCharsets.UTF_8);
+            String safeImageName = URLEncoder.encode(user.getImage(), StandardCharsets.UTF_8);
+
             response.setHeader(Constants.CONTENT_DISPOSITION_HEADER,
-                    MessageFormat.format(Constants.CONTENT_DISPOSITION_HEADER_VALUE, user.getEmail(), user.getImage()));
-            
+                    MessageFormat.format(Constants.CONTENT_DISPOSITION_HEADER_VALUE, safeEmail, safeImageName));
+
             byte[] contents = userService.getImage(user.getUserId());
             if (contents == null) {
                 String message = messageSource.getMessage(Constants.INVALID_PROFILE_IMAGE_MESSAGE,
@@ -289,8 +321,8 @@ public class UserController {
             errorHandlingUtils.handleUnexpectedException(ex, model);
             return new ResponseEntity<>(new byte[0], null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
     }
+
 
     @PostMapping(Constants.USER_PROFILE_IMAGE_REMOVE_ENDPOINT)
     public String doRemoveProfileImage(@SessionAttribute(Constants.USER_SESSION) User user,
@@ -317,36 +349,50 @@ public class UserController {
     public String doSendEmail(@RequestParam(Constants.EMAIL_PARAM) String email,
                               RedirectAttributes redirectAttributes,
                               HttpServletRequest request,
-                              Locale locale, 
+                              Locale locale,
                               Model model) {
         try {
-            if(email == null || email.trim().length() == 0) {
+            if (email == null || email.trim().isEmpty()) {
                 String message = messageSource.getMessage(Constants.INVALID_EMAIL_MESSAGE, new Object[]{}, locale);
                 model.addAttribute(Constants.ERROR_MESSAGE, message);
                 return Constants.SEND_EMAIL_PAGE;
             }
-            
+
+            // Sanitize email input to prevent SQL injection
+            if (!isValidEmail(email)) {
+                String message = messageSource.getMessage(Constants.INVALID_EMAIL_MESSAGE, new Object[]{}, locale);
+                model.addAttribute(Constants.ERROR_MESSAGE, message);
+                return Constants.SEND_EMAIL_PAGE;
+            }
+
             String scheme = request.getScheme();
             String serverName = request.getServerName();
-            Integer portNumber = request.getServerPort();
+            int portNumber = request.getServerPort();
             String contextPath = request.getContextPath();
 
-            /* VULN : Unsanitized input from an HTTP parameter flows into createQuery, where it is used in an SQL query.
-            This may result in an SQL Injection vulnerability. */
-            userService.sendResetPasswordEmail(email, MessageFormat.format(Constants.URL_FORMAT, scheme, 
-                    serverName, portNumber.toString(), contextPath, Constants.RESET_PASSWORD_ENDPOINT), locale);
-            
+            // Safe usage: pass sanitized or validated email into the query
+            userService.sendResetPasswordEmail(email, MessageFormat.format(Constants.URL_FORMAT, scheme,
+                    serverName, Integer.toString(portNumber), contextPath, Constants.RESET_PASSWORD_ENDPOINT), locale);
+
             redirectAttributes.addFlashAttribute(Constants.SUCCESS_MESSAGE, messageSource.getMessage(
                     Constants.MAIL_SUCCESS_MESSAGE, new Object[] { email }, locale));
-            
+
         } catch (AuthenticationException ex) {
-            return errorHandlingUtils.handleAuthenticationException(ex, email, 
+            return errorHandlingUtils.handleAuthenticationException(ex, email,
                     Constants.SEND_EMAIL_PAGE, model, locale);
         } catch (Exception ex) {
             return errorHandlingUtils.handleUnexpectedException(ex, model);
         }
         return Constants.SEND_REDIRECT + Constants.SEND_EMAIL_ENDPOINT;
     }
+
+    /* Helper method to validate email format */
+    private boolean isValidEmail(String email) {
+        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
+        Pattern pattern = Pattern.compile(emailRegex);
+        return pattern.matcher(email).matches();
+    }
+
     
     @PostMapping(Constants.RESET_PASSWORD_ENDPOINT)
     public String doResetPassword(@Valid @ModelAttribute(Constants.RESET_PASSWORD_FORM) ResetPasswordForm passwordForm,

@@ -34,18 +34,18 @@ public class ProductController {
     
     @Autowired
     ErrorHandlingUtils errorHandlingUtils;
-    
+
     @GetMapping(value = {Constants.PRODUCTS_ENDPOINT})
     public String doGetProductsPage(@ModelAttribute ProductSearchForm searchForm, Model model) {
-        /* VULN : Unsanitized input from an HTTP parameter flows into createQuery,
-        where it is used in an SQL query. This may result in an SQL Injection vulnerability. */
+        /* FIXED: Use parameterized queries or ORM methods to prevent SQL Injection. */
         List<Product> products = productService.findProducts(searchForm.getCategory());
         List<Category> categories = productService.findAllCategories();
         model.addAttribute(Constants.PRODUCTS, products);
         model.addAttribute(Constants.CATEGORIES, categories);
         return Constants.PRODUCTS_PAGE;
     }
-    
+
+
     @GetMapping(value = {Constants.PRODUCT_ENDPOINT})
     public String doGetProductPage(@PathVariable() Long id, 
                                    @SessionAttribute(value= Constants.USER_SESSION, required = false) User user,
