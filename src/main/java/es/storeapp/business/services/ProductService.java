@@ -19,27 +19,29 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 @Service
 public class ProductService {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductService.class);
 
-    @Autowired
-    ConfigurationParameters configurationParameters;
+    public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository, CommentRepository rateRepository) {
+        this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
+        this.rateRepository = rateRepository;
+    }
 
-    @Autowired
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository;
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+    private final CategoryRepository categoryRepository;
 
-    @Autowired
-    private CommentRepository rateRepository;
+    private final CommentRepository rateRepository;
 
-    @Autowired
-    ExceptionGenerationUtils exceptionGenerationUtils;
-    
+
+    @Transactional(readOnly = true)
+    public List<Category> findHighlightedCategories() {
+        return categoryRepository.findHighlighted();
+    }
+
     @Transactional(readOnly = true)
     public List<Product> findAllProducts() {
         return productRepository.findAll(Constants.PRICE_FIELD);
@@ -54,8 +56,11 @@ public class ProductService {
         }
     }
 
-    @Transactional(readOnly = false)
+    @Transactional(readOnly = true)
     public Product findProductById(Long id) throws InstanceNotFoundException {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException(Constants.INVALID_PRODUCT_ID);
+        }
         return productRepository.findById(id);
     }
 
@@ -65,57 +70,37 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<Category> findHighlightedCategories() {
-        return categoryRepository.findHighlighted();
-    }
-
-    @Transactional()
-    public Comment findCommentByUserAndProduct(User user, Long productId)
-            throws InstanceNotFoundException {
-        try {
-            Product product = productRepository.findById(productId);
-            if(logger.isDebugEnabled()) {
-                logger.debug(MessageFormat.format("Searching if the user {0} has commented the product {1}", 
-                    user.getEmail(), product.getName()));
-            }
-            return rateRepository.findByUserAndProduct(user.getUserId(), productId);
-        } catch (EmptyResultDataAccessException e) {
-            return null;
+    public Comment findCommentByUserAndProduct(User user, Long productId) throws InstanceNotFoundException {
+        if (productId == null || productId <= 0) {
+            throw new IllegalArgumentException(Constants.INVALID_PRODUCT_ID);
         }
+        Product product = productRepository.findById(productId);
+        logger.debug("Searching if the user with ID {} has commented on product {}", user.getUserId(), product.getName());
+        return rateRepository.findByUserAndProduct(user.getUserId(), productId);
     }
 
-    @Transactional()
-    public Comment comment(User user, Long productId, String text, Integer rating)
-            throws InstanceNotFoundException {
+    @Transactional
+    public Comment comment(User user, Long productId, String text, Integer rating) throws InstanceNotFoundException {
+        if (productId == null || productId <= 0) {
+            throw new IllegalArgumentException(Constants.INVALID_PRODUCT_ID);
+        }
+        if (rating == null || rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("Invalid rating value");
+        }
         Product product = productRepository.findById(productId);
-        try {
-            Comment comment = rateRepository.findByUserAndProduct(user.getUserId(), product.getProductId());
-            if(logger.isDebugEnabled()) {
-                logger.debug(MessageFormat.format("{0} has modified his comment of the product {1}", 
-                    user.getName(), product.getName()));
-            }
+        Comment comment = rateRepository.findByUserAndProduct(user.getUserId(), productId);
+        if (comment != null) {
+            logger.debug("{} has modified their comment for product {}", user.getName(), product.getName());
             product.setTotalScore(product.getTotalScore() - comment.getRating() + rating);
             comment.setRating(rating);
             comment.setText(text);
-            comment.setTimestamp(System.currentTimeMillis());
-            productRepository.update(product);
-            return rateRepository.update(comment);
-        } catch (EmptyResultDataAccessException e) {
-            if(logger.isDebugEnabled()) {
-                logger.debug(MessageFormat.format("{0} created a comment of the product {1}", 
-                    user.getName(), product.getName()));
-            }
-            Comment comment = new Comment();
-            comment.setUser(user);
-            comment.setProduct(product);
-            comment.setRating(rating);
-            comment.setText(text);
-            comment.setTimestamp(System.currentTimeMillis());
+        } else {
+            logger.debug("{} created a comment for product {}", user.getName(), product.getName());
+            comment = new Comment(user, product, text, rating);
             product.setTotalComments(product.getTotalComments() + 1);
             product.setTotalScore(product.getTotalScore() + rating);
-            productRepository.update(product);
-            return rateRepository.create(comment);
         }
+        productRepository.update(product);
+        return rateRepository.create(comment);
     }
-
 }

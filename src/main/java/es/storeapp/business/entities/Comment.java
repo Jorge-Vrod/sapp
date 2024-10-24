@@ -17,6 +17,13 @@ import jakarta.persistence.Table;
 @Table(name = Constants.COMMENTS_TABLE)
 public class Comment implements Serializable{
 
+    public Comment(User user, Product product, String text, Integer rating) {
+        this.text = text;
+        this.rating = rating;
+        this.user = user;
+        this.product = product;
+    }
+
     private static final long serialVersionUID = -8821440815912953976L;
     
     @Id
