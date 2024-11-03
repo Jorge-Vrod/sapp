@@ -15,29 +15,26 @@ public class ExceptionGenerationUtils {
     
     @Autowired
     private MessageSource messageSource;
-    
-    public InstanceNotFoundException toInstanceNotFoundException(Long id, String type, String messageKey) 
-            throws InstanceNotFoundException {
+
+    public InstanceNotFoundException toInstanceNotFoundException(Long id, String type, String messageKey) {
         Locale locale = LocaleContextHolder.getLocale();
         String message = messageSource.getMessage(messageKey, new Object[]{type, id}, locale);
         return new InstanceNotFoundException(id, type, message);
     }
     
-    public DuplicatedResourceException toDuplicatedResourceException(String resource, String value, String messageKey) 
-            throws DuplicatedResourceException {
+    public DuplicatedResourceException toDuplicatedResourceException(String resource, String value, String messageKey) {
         Locale locale = LocaleContextHolder.getLocale();
         String message = messageSource.getMessage(messageKey, new Object[]{value, resource}, locale);
         return new DuplicatedResourceException(resource, value, message);
     }
 
-    public AuthenticationException toAuthenticationException(String messageKey, String user) 
-            throws AuthenticationException {
+    public AuthenticationException toAuthenticationException(String messageKey, String user) {
         Locale locale = LocaleContextHolder.getLocale();
         String message = messageSource.getMessage(messageKey, new Object[] {user}, locale);
         return new AuthenticationException(message);
     }
 
-    public InvalidStateException toInvalidStateException(String messageKey) throws InvalidStateException {
+    public InvalidStateException toInvalidStateException(String messageKey) {
         Locale locale = LocaleContextHolder.getLocale();
         String message = messageSource.getMessage(messageKey, new Object[0], locale);
         return new InvalidStateException(message);

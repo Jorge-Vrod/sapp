@@ -1,13 +1,16 @@
 package es.storeapp.web.session;
 
 import es.storeapp.business.entities.Product;
+
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ShoppingCart implements Serializable {
 
-    private static final long serialVersionUID = 8032734613287752106L; 
+    @Serial
+    private static final long serialVersionUID = 8032734613287752106L;
     
     private final List<Product> products = new ArrayList<>();
 
@@ -21,7 +24,7 @@ public class ShoppingCart implements Serializable {
     
     public int getTotalPrice() {
         int totalPrice = 0;
-        return products.stream().map(product -> product.getPrice()).reduce(totalPrice, Integer::sum);
+        return products.stream().map(Product::getPrice).reduce(totalPrice, Integer::sum);
     }
     
     public void clear() {

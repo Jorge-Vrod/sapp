@@ -14,8 +14,7 @@ public class LoggerInterceptor implements HandlerInterceptor {
     private static final Logger logger = LoggerFactory.getLogger(LoggerInterceptor.class);
     
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
-        throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
 
         if(logger.isDebugEnabled()) {
             logger.debug(MessageFormat.format("Request URL: {0} started at {1}", 
