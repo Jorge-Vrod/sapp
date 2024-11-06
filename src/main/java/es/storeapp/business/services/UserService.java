@@ -7,6 +7,7 @@ import es.storeapp.business.exceptions.InstanceNotFoundException;
 import es.storeapp.business.exceptions.ServiceException;
 import es.storeapp.business.repositories.UserRepository;
 import es.storeapp.business.utils.ExceptionGenerationUtils;
+import es.storeapp.business.utils.ValidationUtils;
 import es.storeapp.common.ConfigurationParameters;
 import es.storeapp.common.Constants;
 import java.io.ByteArrayInputStream;
@@ -65,6 +66,9 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public User login(String email, String clearPassword) throws AuthenticationException {
+        if (!ValidationUtils.validateEmail(email) || !ValidationUtils.validatePassword(clearPassword)) {
+            throw new IllegalArgumentException("Invalid email or password format.");
+        }
         if (!userRepository.existsUser(email)) {
             throw exceptionGenerationUtils.toAuthenticationException(Constants.AUTH_INVALID_USER_MESSAGE, email);
         }
@@ -75,77 +79,71 @@ public class UserService {
         return user;
     }
 
-    @Transactional()
-    public void sendResetPasswordEmail(String email, String url, Locale locale)
-            throws AuthenticationException, ServiceException {
+
+    @Transactional
+    public void sendResetPasswordEmail(String email, String url, Locale locale) throws AuthenticationException, ServiceException {
+        if (!ValidationUtils.validateEmail(email)) {
+            throw new IllegalArgumentException("Invalid email format.");
+        }
+
         User user = userRepository.findByEmail(email);
         if (user == null) {
             throw exceptionGenerationUtils.toAuthenticationException(Constants.AUTH_INVALID_USER_MESSAGE, email);
         }
+
         String token = UUID.randomUUID().toString();
+        user.setResetPasswordToken(token);
+        userRepository.update(user);  // Save the token before sending email
 
         try {
-
-            System.setProperty("mail.smtp.ssl.protocols", "TLSv1.2");
-
-            /* FIXED: Set SSL check for server identity to ensure server identity verification. */
             HtmlEmail htmlEmail = new HtmlEmail();
             htmlEmail.setHostName(configurationParameters.getMailHost());
             htmlEmail.setSmtpPort(configurationParameters.getMailPort());
-            htmlEmail.setSslSmtpPort(Integer.toString(configurationParameters.getMailPort()));
-            htmlEmail.setAuthentication(configurationParameters.getMailUserName(),
-                    configurationParameters.getMailPassword());
-            htmlEmail.setSSLOnConnect(configurationParameters.getMailSslEnable() != null
-                    && configurationParameters.getMailSslEnable());
-
-            /* FIX: Ensure that the server identity is checked to prevent man-in-the-middle attacks */
+            htmlEmail.setAuthentication(configurationParameters.getMailUserName(), configurationParameters.getMailPassword());
+            htmlEmail.setSSLOnConnect(configurationParameters.getMailSslEnable() != null && configurationParameters.getMailSslEnable());
             htmlEmail.setSSLCheckServerIdentity(true);
-
             if (Boolean.TRUE.equals(configurationParameters.getMailStartTlsEnable())) {
                 htmlEmail.setStartTLSEnabled(true);
                 htmlEmail.setStartTLSRequired(true);
             }
+
             htmlEmail.addTo(email, user.getName());
             htmlEmail.setFrom(configurationParameters.getMailFrom());
-            htmlEmail.setSubject(messageSource.getMessage(Constants.MAIL_SUBJECT_MESSAGE,
-                    new Object[]{user.getName()}, locale));
+            htmlEmail.setSubject(messageSource.getMessage(Constants.MAIL_SUBJECT_MESSAGE, new Object[]{user.getName()}, locale));
 
-            String link = url + Constants.PARAMS
-                    + Constants.TOKEN_PARAM + Constants.PARAM_VALUE + token + Constants.NEW_PARAM_VALUE
-                    + Constants.EMAIL_PARAM + Constants.PARAM_VALUE + email;
-
-            htmlEmail.setHtmlMsg(messageSource.getMessage(Constants.MAIL_TEMPLATE_MESSAGE,
-                    new Object[]{user.getName(), link}, locale));
-
-            htmlEmail.setTextMsg(messageSource.getMessage(Constants.MAIL_HTML_NOT_SUPPORTED_MESSAGE,
-                    new Object[0], locale));
+            String link = url + Constants.PARAMS + Constants.TOKEN_PARAM + "=" + token + "&" + Constants.EMAIL_PARAM + "=" + email;
+            htmlEmail.setHtmlMsg(messageSource.getMessage(Constants.MAIL_TEMPLATE_MESSAGE, new Object[]{user.getName(), link}, locale));
+            htmlEmail.setTextMsg(messageSource.getMessage(Constants.MAIL_HTML_NOT_SUPPORTED_MESSAGE, new Object[0], locale));
 
             htmlEmail.send();
         } catch (Exception ex) {
-            logger.error(ex.getMessage(), ex);
-            throw new ServiceException(ex.getMessage());
+            logger.error("Failed to send reset password email: {}", ex.getMessage());
+            throw new ServiceException("Failed to send reset password email.");
         }
-
-        user.setResetPasswordToken(token);
-        userRepository.update(user);
     }
-
 
 
     @Transactional
     public User create(String name, String email, String rawPassword, String address, String image, byte[] imageContents)
-            throws DuplicatedResourceException {
+            throws DuplicatedResourceException, ServiceException {
+
+        if (!ValidationUtils.validateName(name) || !ValidationUtils.validateEmail(email)
+                || !ValidationUtils.validatePassword(rawPassword) || !ValidationUtils.validateAddress(address)) {
+            throw new IllegalArgumentException("Invalid user data.");
+        }
         if (userRepository.findByEmail(email) != null) {
-            throw exceptionGenerationUtils.toDuplicatedResourceException(Constants.EMAIL_FIELD, email,
-                    Constants.DUPLICATED_INSTANCE_MESSAGE);
+            throw exceptionGenerationUtils.toDuplicatedResourceException(Constants.EMAIL_FIELD, email, Constants.DUPLICATED_INSTANCE_MESSAGE);
         }
 
         String encodedPassword = passwordEncoder.encode(rawPassword);
         User user = userRepository.create(new User(name, email, encodedPassword, address, image));
-        saveProfileImage(user.getUserId(), image, imageContents);
 
+        if (ValidationUtils.validateImage(image, imageContents)) {
+            saveProfileImage(user.getUserId(), image, imageContents);
+        }
         return user;
     }
+
 
     @Transactional
     public User update(Long id, String name, String email, String address, String image, byte[] imageContents)
@@ -174,6 +172,11 @@ public class UserService {
     @Transactional
     public User changePassword(Long id, String oldPassword, String newPassword)
             throws InstanceNotFoundException, AuthenticationException {
+
+        if (!ValidationUtils.validatePassword(oldPassword) || !ValidationUtils.validatePassword(newPassword)) {
+            throw new IllegalArgumentException("Invalid password format.");
+        }
+
         User user = userRepository.findById(id);
         if (user == null) {
             throw exceptionGenerationUtils.toAuthenticationException(Constants.AUTH_INVALID_USER_MESSAGE, id.toString());
@@ -202,12 +205,7 @@ public class UserService {
     @Transactional
     public User removeImage(Long id) throws InstanceNotFoundException, ServiceException {
         User user = userRepository.findById(id);
-        try {
-            deleteProfileImage(id, user.getImage());
-        } catch (IOException ex) {
-            logger.error(ex.getMessage(), ex);
-            throw new ServiceException(ex.getMessage());
-        }
+        deleteProfileImage(id, user.getImage());
         user.setImage(null);
         return userRepository.update(user);
     }
@@ -217,42 +215,77 @@ public class UserService {
         User user = userRepository.findById(id);
         try {
             return getProfileImage(id, user.getImage());
-        } catch (IOException ex) {
+        } catch (ServiceException ex) {
             logger.error(ex.getMessage(), ex);
-            return null;
+            return new byte[0];
         }
     }
 
-    private void saveProfileImage(Long id, String image, byte[] imageContents) {
-        if (image != null && !image.trim().isEmpty() && imageContents != null) {
-            File userDir = new File(resourcesDir, id.toString());
-            userDir.mkdirs();
-            File profilePicture = new File(userDir, image);
-            try (FileOutputStream outputStream = new FileOutputStream(profilePicture);) {
-                IOUtils.copy(new ByteArrayInputStream(imageContents), outputStream);
-            } catch (Exception e) {
-                logger.error(e.getMessage(), e);
+    private synchronized void saveProfileImage(Long id, String image, byte[] imageContents) throws ServiceException {
+        if (!ValidationUtils.validateImageName(image) || imageContents == null || imageContents.length > 5 * 1024 * 1024) {  // Limit to 5MB
+            throw new IllegalArgumentException("Invalid image name or size exceeds limit.");
+        }
+
+        File userDir = new File(resourcesDir, id.toString());
+        if (!userDir.exists() && !userDir.mkdirs()) {
+            throw new ServiceException("Failed to create user directory for image storage.");
+        }
+
+        File profilePicture = new File(userDir, image);
+        try (FileOutputStream outputStream = new FileOutputStream(profilePicture)) {
+            IOUtils.copy(new ByteArrayInputStream(imageContents), outputStream);
+
+            // Set permissions to restrict access (only the application should have access)
+            profilePicture.setReadable(true, true);
+            profilePicture.setWritable(true, true);
+        } catch (IOException e) {
+            logger.error("Error saving profile image for user {}: {}", id, e.getMessage());
+            throw new ServiceException("Failed to save profile image.");
+        }
+    }
+
+
+    private synchronized void deleteProfileImage(Long id, String image) throws ServiceException {
+        if (!ValidationUtils.validateImageName(image)) {
+            throw new IllegalArgumentException("Invalid image name.");
+        }
+
+        File userDir = new File(resourcesDir, id.toString());
+        File profilePicture = new File(userDir, image);
+
+        if (profilePicture.exists()) {
+            try {
+                Files.delete(profilePicture.toPath());
+            } catch (IOException e) {
+                logger.error("Error deleting profile image for user {}: {}", id, e.getMessage());
+                throw new ServiceException("Failed to delete profile image.");
             }
+        } else {
+            logger.warn("Profile image for user {} not found: {}", id, image);
         }
     }
 
-    private void deleteProfileImage(Long id, String image) throws IOException {
-        if (image != null && !image.trim().isEmpty()) {
-            File userDir = new File(resourcesDir, id.toString());
-            File profilePicture = new File(userDir, image);
-            Files.delete(profilePicture.toPath());
+
+    private byte[] getProfileImage(Long id, String image) throws ServiceException {
+        if (!ValidationUtils.validateImageName(image)) {
+            throw new IllegalArgumentException("Invalid image name.");
+        }
+
+        File userDir = new File(resourcesDir, id.toString());
+        File profilePicture = new File(userDir, image);
+
+        if (!profilePicture.exists()) {
+            logger.warn("Requested profile image for user {} not found: {}", id, image);
+            return new byte[0];
+        }
+
+        try (FileInputStream input = new FileInputStream(profilePicture)) {
+            return IOUtils.toByteArray(input);
+        } catch (IOException e) {
+            logger.error("Error retrieving profile image for user {}: {}", id, e.getMessage());
+            throw new ServiceException("Failed to retrieve profile image.");
         }
     }
 
-    private byte[] getProfileImage(Long id, String image) throws IOException {
-        if (image != null && !image.trim().isEmpty()) {
-            File userDir = new File(resourcesDir, id.toString());
-            File profilePicture = new File(userDir, image);
-            try (FileInputStream input = new FileInputStream(profilePicture)) {
-                return IOUtils.toByteArray(input);
-            }
-        }
-        return null;
-    }
 
 }
