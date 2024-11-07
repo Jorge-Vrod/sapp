@@ -4,11 +4,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.storeapp.business.entities.User;
 import es.storeapp.business.services.UserService;
+import es.storeapp.business.utils.ValidationUtils;
 import es.storeapp.common.Constants;
 import es.storeapp.web.cookies.UserInfo;
 import java.beans.XMLDecoder;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.regex.Pattern;
@@ -31,8 +33,7 @@ public class AutoLoginInterceptor implements HandlerInterceptor {
     }
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
-            throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
 
         HttpSession session = request.getSession(true);
         if (session.getAttribute(Constants.USER_SESSION) != null || request.getCookies() == null) {
@@ -48,13 +49,15 @@ public class AutoLoginInterceptor implements HandlerInterceptor {
                 Base64.Decoder decoder = Base64.getDecoder();
                 String decodedValue = new String(decoder.decode(cookieValue), StandardCharsets.UTF_8);
 
+                String urlDecodedValue = URLDecoder.decode(decodedValue, StandardCharsets.UTF_8);
+
                 try {
                     // Use a safe JSON parser for deserialization
                     ObjectMapper objectMapper = new ObjectMapper();
-                    UserInfo userInfo = objectMapper.readValue(decodedValue, UserInfo.class);
+                    UserInfo userInfo = objectMapper.readValue(urlDecodedValue, UserInfo.class);
 
                     /* FIXED: Sanitize user input before using it in a query to prevent SQL injection */
-                    if (isValidEmail(userInfo.getEmail())) {
+                    if (ValidationUtils.validateEmail(userInfo.getEmail())) {
                         User user = userService.findByEmail(userInfo.getEmail());
 
                         /* FIXED: Use a constant-time password comparison method to prevent timing attacks */
@@ -68,15 +71,6 @@ public class AutoLoginInterceptor implements HandlerInterceptor {
             }
         }
         return true;
-    }
-
-
-
-    /* Helper method to validate email format */
-    private boolean isValidEmail(String email) {
-        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
-        Pattern pattern = Pattern.compile(emailRegex);
-        return pattern.matcher(email).matches();
     }
 
 }

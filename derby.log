@@ -1,6 +1,6 @@
 ----------------------------------------------------------------
-Thu Nov 07 15:38:35 CET 2024:
-Booting Derby version The Apache Software Foundation - Apache Derby - 10.16.1.1 - (1901046): instance a816c00e-0193-0710-1459-000001359e80 
+Thu Nov 07 16:35:30 CET 2024:
+Booting Derby version The Apache Software Foundation - Apache Derby - 10.16.1.1 - (1901046): instance a816c00e-0193-0744-314b-000001392068 
 on database directory D:\UNI\ciber\master\APP\practicas\P1\store-app\work\database with class loader jdk.internal.loader.ClassLoaders$AppClassLoader@76ed5528 
 Loaded from file:/C:/Users/Jorge/.m2/repository/org/apache/derby/derby/10.16.1.1/derby-10.16.1.1.jar
 java.vendor=Eclipse Adoptium
@@ -11,6 +11,3 @@ os.arch=amd64
 os.version=10.0
 derby.system.home=null
 Database Class Loader started - derby.database.classpath=''
-----------------------------------------------------------------
-Thu Nov 07 15:47:06 CET 2024:
-Shutting down instance a816c00e-0193-0710-1459-000001359e80 on database directory D:\UNI\ciber\master\APP\practicas\P1\store-app\work\database with class loader jdk.internal.loader.ClassLoaders$AppClassLoader@76ed5528 

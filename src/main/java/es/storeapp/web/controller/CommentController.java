@@ -4,6 +4,7 @@ import es.storeapp.business.entities.Comment;
 import es.storeapp.business.entities.User;
 import es.storeapp.business.exceptions.InstanceNotFoundException;
 import es.storeapp.business.services.ProductService;
+import es.storeapp.business.utils.InputSanitizer;
 import es.storeapp.common.Constants;
 import es.storeapp.web.exceptions.ErrorHandlingUtils;
 import es.storeapp.web.forms.CommentForm;
@@ -87,7 +88,7 @@ public class CommentController {
         }
 
         try {
-            productService.comment(user, commentForm.getProductId(), commentForm.getText(), commentForm.getRating());
+            productService.comment(user, commentForm.getProductId(), InputSanitizer.sanitize(commentForm.getText()), commentForm.getRating());
             String message = messageSource.getMessage(Constants.PRODUCT_COMMENT_CREATED, null, locale);
             redirectAttributes.addFlashAttribute(Constants.SUCCESS_MESSAGE, message);
             return Constants.SEND_REDIRECT + MessageFormat.format(Constants.PRODUCT_TEMPLATE, commentForm.getProductId());
