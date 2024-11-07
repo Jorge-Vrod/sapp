@@ -13,7 +13,6 @@ import es.storeapp.business.repositories.OrderRepository;
 import es.storeapp.business.repositories.ProductRepository;
 import es.storeapp.business.repositories.UserRepository;
 import es.storeapp.business.utils.ExceptionGenerationUtils;
-import es.storeapp.business.utils.ValidationConstants;
 import es.storeapp.business.utils.ValidationUtils;
 import es.storeapp.common.Constants;
 import java.text.MessageFormat;
@@ -50,7 +49,7 @@ public class OrderService {
     public Order create(User user, String name, String address, Integer price, List<Long> products)
             throws InstanceNotFoundException {
 
-        if (user == null || !ValidationUtils.validateString(name, ValidationConstants.MAX_NAME_SIZE) || !ValidationUtils.validatePrice(price)
+        if (user == null || !ValidationUtils.validateName(name) || !ValidationUtils.validatePrice(price)
                 || !ValidationUtils.validateProductList(products)) {
             throw new IllegalArgumentException("Invalid input for creating an order.");
         }

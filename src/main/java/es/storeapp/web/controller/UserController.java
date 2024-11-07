@@ -6,6 +6,7 @@ import es.storeapp.business.exceptions.DuplicatedResourceException;
 import es.storeapp.business.exceptions.InstanceNotFoundException;
 import es.storeapp.business.exceptions.ServiceException;
 import es.storeapp.business.services.UserService;
+import es.storeapp.business.utils.ValidationUtils;
 import es.storeapp.common.Constants;
 import es.storeapp.web.cookies.UserInfo;
 import es.storeapp.web.exceptions.ErrorHandlingUtils;
@@ -19,9 +20,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
-import java.util.Base64;
-import java.util.Locale;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import jakarta.servlet.http.Cookie;
@@ -53,6 +52,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class UserController {
 
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+
 
     @Autowired
     private MessageSource messageSource;
@@ -136,52 +136,39 @@ public class UserController {
                     Constants.AUTH_INVALID_USER_OR_PASSWORD_MESSAGE, model, locale);
             return Constants.LOGIN_PAGE;
         }
+
         User user;
         try {
-            // Spring Security automatically validates CSRF tokens before this point
             user = userService.login(loginForm.getEmail(), loginForm.getPassword());
             session.setAttribute(Constants.USER_SESSION, user);
-            if (logger.isDebugEnabled()) {
-                logger.debug(MessageFormat.format("User {0} logged in", user.getEmail()));
-            }
-            if (loginForm.getRememberMe() != null && loginForm.getRememberMe()) {
-                Base64.Encoder encoder = Base64.getEncoder();
-                ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                try (XMLEncoder xmlEncoder = new XMLEncoder(buffer)) {
-                    xmlEncoder.writeObject(new UserInfo(user.getEmail(), user.getPassword()));
-                }
-                Cookie userCookie = new Cookie(Constants.PERSISTENT_USER_COOKIE,
-                        new String(encoder.encode(buffer.toByteArray())));
-                userCookie.setSecure(true);
-                userCookie.setHttpOnly(true);
 
-                userCookie.setMaxAge(3600); // 1 hour
-                response.addCookie(userCookie);
-            }
-        } catch (AuthenticationException ex) {
             if (logger.isDebugEnabled()) {
-                logger.debug(MessageFormat.format("User {0} not logged in ", loginForm.getEmail()));
+                logger.debug("User {} logged in", user.getEmail());
             }
+
+            // Redirect logic
+            if (next != null && !next.trim().isEmpty()) {
+                if (isLocalRedirect(next)) {
+                    return Constants.SEND_REDIRECT + next;
+                } else {
+                    return Constants.SEND_REDIRECT + Constants.ROOT_ENDPOINT;
+                }
+            }
+
+            return Constants.SEND_REDIRECT + Constants.ROOT_ENDPOINT;
+
+        } catch (AuthenticationException ex) {
+            logger.debug("User {} not logged in", loginForm.getEmail());
             return errorHandlingUtils.handleAuthenticationException(ex, loginForm.getEmail(),
                     Constants.LOGIN_PAGE, model, locale);
         }
-        /* FIXED: Sanitize the 'next' parameter to prevent open redirect vulnerability */
-        if (next != null && !next.trim().isEmpty()) {
-            if (isLocalRedirect(next)) {
-                return Constants.SEND_REDIRECT + next;
-            } else {
-                return Constants.SEND_REDIRECT + Constants.ROOT_ENDPOINT;
-            }
-        }
-        return Constants.SEND_REDIRECT + Constants.ROOT_ENDPOINT;
     }
+
 
     /* Helper method to check if a URL is local to avoid open redirect */
     private boolean isLocalRedirect(String url) {
         return url.startsWith("/") && !url.startsWith("//") && !url.contains("://");
     }
-
-
 
     @PostMapping(Constants.REGISTRATION_ENDPOINT)
     public String doRegister(@Valid @ModelAttribute(Constants.USER_PROFILE_FORM) UserProfileForm userProfileForm,
@@ -197,28 +184,29 @@ public class UserController {
         }
         User user;
         try {
-            /* FIXED: Use a safe and controlled file path for user-uploaded images */
             String safeFileName = null;
             byte[] imageBytes = null;
 
-            if (userProfileForm.getImage() != null) {
-                safeFileName = UUID.randomUUID() + "_" +
-                        FilenameUtils.getName(userProfileForm.getImage().getOriginalFilename());
-                imageBytes = userProfileForm.getImage().getBytes();
+            if (userProfileForm.getImage() != null && !userProfileForm.getImage().isEmpty()) {
+                String originalFilename = FilenameUtils.getName(userProfileForm.getImage().getOriginalFilename());
+                if (ValidationUtils.validateImageName(originalFilename)) {
+                    safeFileName = UUID.randomUUID() + "_" + originalFilename;
+                    imageBytes = userProfileForm.getImage().getBytes();
+                } else {
+                    throw new IllegalArgumentException("Invalid file name.");
+                }
             }
 
             user = userService.create(userProfileForm.getName(), userProfileForm.getEmail(),
                     userProfileForm.getPassword(), userProfileForm.getAddress(), safeFileName, imageBytes);
 
-            if (logger.isDebugEnabled()) {
-                logger.debug(MessageFormat.format("User {0} with name {1} registered", user.getEmail(), user.getName()));
-            }
+            logger.debug("User {} with name {} registered", user.getEmail(), user.getName());
             session.setAttribute(Constants.USER_SESSION, user);
             redirectAttributes.addFlashAttribute(Constants.SUCCESS_MESSAGE, messageSource.getMessage(
                     Constants.REGISTRATION_SUCCESS_MESSAGE, new Object[]{user.getName()}, locale));
+
         } catch (DuplicatedResourceException ex) {
-            return errorHandlingUtils.handleDuplicatedResourceException(ex, Constants.USER_PROFILE_PAGE,
-                    model, locale);
+            return errorHandlingUtils.handleDuplicatedResourceException(ex, Constants.USER_PROFILE_PAGE, model, locale);
         } catch (Exception ex) {
             return errorHandlingUtils.handleUnexpectedException(ex, model);
         }
@@ -296,30 +284,26 @@ public class UserController {
                                                     Locale locale,
                                                     Model model) {
         try {
-            response.setHeader(Constants.CONTENT_TYPE_HEADER, MediaType.APPLICATION_OCTET_STREAM_VALUE);
-
-            /* FIXED: Sanitize the user input to prevent HTTP response splitting */
             String safeEmail = URLEncoder.encode(user.getEmail(), StandardCharsets.UTF_8);
             String safeImageName = URLEncoder.encode(user.getImage(), StandardCharsets.UTF_8);
-
+            response.setHeader(Constants.CONTENT_TYPE_HEADER, MediaType.APPLICATION_OCTET_STREAM_VALUE);
             response.setHeader(Constants.CONTENT_DISPOSITION_HEADER,
                     MessageFormat.format(Constants.CONTENT_DISPOSITION_HEADER_VALUE, safeEmail, safeImageName));
 
             byte[] contents = userService.getImage(user.getUserId());
             if (contents == null) {
-                String message = messageSource.getMessage(Constants.INVALID_PROFILE_IMAGE_MESSAGE,
-                        new Object[]{}, locale);
+                String message = messageSource.getMessage(Constants.INVALID_PROFILE_IMAGE_MESSAGE, new Object[]{}, locale);
                 model.addAttribute(Constants.MESSAGE, message);
-                return new ResponseEntity<>(new byte[0], null, HttpStatus.INTERNAL_SERVER_ERROR);
+                return new ResponseEntity<>(new byte[0], HttpStatus.NOT_FOUND);
             }
 
-            return new ResponseEntity<>(contents, null, HttpStatus.OK);
+            return new ResponseEntity<>(contents, HttpStatus.OK);
         } catch (InstanceNotFoundException ex) {
             errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
-            return new ResponseEntity<>(new byte[0], null, HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(new byte[0], HttpStatus.NOT_FOUND);
         } catch (Exception ex) {
             errorHandlingUtils.handleUnexpectedException(ex, model);
-            return new ResponseEntity<>(new byte[0], null, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(new byte[0], HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -359,7 +343,7 @@ public class UserController {
             }
 
             // Sanitize email input to prevent SQL injection
-            if (!isValidEmail(email)) {
+            if (!ValidationUtils.validateEmail(email)) {
                 String message = messageSource.getMessage(Constants.INVALID_EMAIL_MESSAGE, new Object[]{}, locale);
                 model.addAttribute(Constants.ERROR_MESSAGE, message);
                 return Constants.SEND_EMAIL_PAGE;
@@ -386,12 +370,6 @@ public class UserController {
         return Constants.SEND_REDIRECT + Constants.SEND_EMAIL_ENDPOINT;
     }
 
-    /* Helper method to validate email format */
-    private boolean isValidEmail(String email) {
-        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
-        Pattern pattern = Pattern.compile(emailRegex);
-        return pattern.matcher(email).matches();
-    }
 
     
     @PostMapping(Constants.RESET_PASSWORD_ENDPOINT)

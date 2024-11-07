@@ -11,6 +11,17 @@
          /*<![CDATA[*/
          $(document).ready(function () {
              doConfigureFormValidation();
+             // Add file name validation for the image input field
+             $('#image').on('change', function () {
+                 var fileName = $(this).val().split('\\').pop();
+                 var validFileNamePattern = /^[a-zA-Z0-9-_]+\.(jpg|jpeg|png)$/;
+
+                 if (!validFileNamePattern.test(fileName)) {
+                     alert('Invalid file name. Please ensure the file name contains only alphanumeric characters, hyphens, underscores, and a single period before the extension.');
+                     $(this).val(''); // Clear the input
+                 }
+             });
+
              $('#remove-image-link').click(function (e) {
                  e.preventDefault();
                  var message = /*[[#{confirm.remove.profile.image}]]*/ DEFAULT_CONFIRM_MESSAGE;

@@ -37,31 +37,43 @@ public class CommentController {
     
     @Autowired
     ErrorHandlingUtils errorHandlingUtils;
-    
+
     @GetMapping(value = {Constants.COMMENT_PRODUCT_ENDPOINT})
-    public String doGetCommentPage(@PathVariable() Long id, 
-                                   @SessionAttribute(Constants.USER_SESSION) User user, 
-                                   Model model, 
+    public String doGetCommentPage(@PathVariable Long id,
+                                   @SessionAttribute(Constants.USER_SESSION) User user,
+                                   Model model,
                                    Locale locale) {
-        CommentForm commentForm = new CommentForm();
-        commentForm.setProductId(id);
-        model.addAttribute(Constants.COMMENT_FORM, commentForm);
+        if (id == null || id <= 0) {
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.INVALID_PRODUCT_ID, null, locale));
+            return Constants.ERROR_PAGE;  // Redirect to a generic error page
+        }
+
         try {
+            CommentForm commentForm = new CommentForm();
+            commentForm.setProductId(id);
+            model.addAttribute(Constants.COMMENT_FORM, commentForm);
             model.addAttribute(Constants.PRODUCT, productService.findProductById(id));
+
             Comment comment = productService.findCommentByUserAndProduct(user, id);
-            if(comment != null) {
+            if (comment != null) {
                 commentForm.setRating(comment.getRating());
                 commentForm.setText(comment.getText());
-                if(logger.isDebugEnabled()) {
-                    logger.debug(MessageFormat.format("Loading previous comment {0}", commentForm));
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Loading previous comment for user ID: {}, product ID: {}", user.getUserId(), id);
                 }
             }
         } catch (InstanceNotFoundException ex) {
             return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
+        } catch (Exception ex) {
+            logger.error("Error loading comment page for product ID {}: {}", id, ex.getMessage());
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            return Constants.ERROR_PAGE;
         }
+
         return Constants.COMMENT_PAGE;
     }
-   
+
+
     @PostMapping(Constants.COMMENT_PRODUCT_ENDPOINT)
     public String doCreateComment(@SessionAttribute(Constants.USER_SESSION) User user,
                                   @Valid @ModelAttribute(Constants.COMMENT_FORM) CommentForm commentForm,
@@ -69,15 +81,24 @@ public class CommentController {
                                   RedirectAttributes redirectAttributes,
                                   Locale locale,
                                   Model model) {
+        if (commentForm.getProductId() == null || commentForm.getProductId() <= 0) {
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.INVALID_PRODUCT_ID, null, locale));
+            return Constants.ERROR_PAGE;
+        }
+
         try {
             productService.comment(user, commentForm.getProductId(), commentForm.getText(), commentForm.getRating());
-            String message = messageSource.getMessage(Constants.PRODUCT_COMMENT_CREATED, new Object[0], locale);
+            String message = messageSource.getMessage(Constants.PRODUCT_COMMENT_CREATED, null, locale);
             redirectAttributes.addFlashAttribute(Constants.SUCCESS_MESSAGE, message);
-            return Constants.SEND_REDIRECT + MessageFormat.format(Constants.PRODUCT_TEMPLATE,
-                commentForm.getProductId());
+            return Constants.SEND_REDIRECT + MessageFormat.format(Constants.PRODUCT_TEMPLATE, commentForm.getProductId());
         } catch (InstanceNotFoundException ex) {
-           return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
+            return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
+        } catch (Exception ex) {
+            logger.error("Error creating comment for product ID {}: {}", commentForm.getProductId(), ex.getMessage());
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            return Constants.ERROR_PAGE;
         }
     }
+
     
 }

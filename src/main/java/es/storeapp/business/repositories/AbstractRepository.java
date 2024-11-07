@@ -2,6 +2,7 @@ package es.storeapp.business.repositories;
 
 import es.storeapp.business.exceptions.InstanceNotFoundException;
 import es.storeapp.business.utils.ExceptionGenerationUtils;
+import es.storeapp.business.utils.ValidationUtils;
 import es.storeapp.common.Constants;
 import java.text.MessageFormat;
 import java.util.Arrays;
@@ -75,7 +76,7 @@ public abstract class AbstractRepository<T> {
     @SuppressWarnings("unchecked")
     public List<T> findAll(String orderColumn) {
         // Validate and sanitize order column to prevent injection
-        if (!isValidOrderColumn(orderColumn)) {
+        if (!ValidationUtils.isValidOrderColumn(orderColumn)) {
             throw new IllegalArgumentException("Invalid column for ordering");
         }
 
@@ -87,7 +88,7 @@ public abstract class AbstractRepository<T> {
     @SuppressWarnings("unchecked")
     public List<T> findByStringAttribute(String attribute, String value, String orderColumn) {
         // Validate and sanitize order column to prevent injection
-        if (!isValidOrderColumn(orderColumn)) {
+        if (!ValidationUtils.isValidOrderColumn(attribute) || !ValidationUtils.isValidOrderColumn(orderColumn)) {
             throw new IllegalArgumentException("Invalid column for ordering");
         }
 
@@ -97,10 +98,5 @@ public abstract class AbstractRepository<T> {
         return query.getResultList();
     }
 
-    /* Helper method to validate column names to prevent injection in orderColumn */
-    private boolean isValidOrderColumn(String column) {
-        // Replace with actual valid column names
-        List<String> validColumns = Arrays.asList("id", "name", "createdDate");
-        return validColumns.contains(column);
-    }
+
 }

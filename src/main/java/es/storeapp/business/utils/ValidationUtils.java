@@ -1,4 +1,5 @@
 package es.storeapp.business.utils;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
@@ -11,17 +12,23 @@ public class ValidationUtils {
     private static final int MAX_EXPIRATION_YEAR = 2050;  // Arbitrary upper limit
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
-    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
-
     private static final Pattern IMAGE_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9-_]+\\.(jpg|jpeg|png)$");
     private static final int MAX_NAME_LENGTH = 50;
+    private static final int MAX_IMAGE_NAME_LENGTH = 50;
     private static final int MAX_ADDRESS_LENGTH = 100;
+
+    /* Helper method to validate column names to prevent injection in orderColumn */
+    public static boolean isValidOrderColumn(String column) {
+        // Replace with actual valid column names
+        List<String> validColumns = Arrays.asList("price");
+        return validColumns.contains(column);
+    }
 
     /**
      * Validates image file name (only alphanumeric, hyphens, and underscores allowed, with valid extensions).
      */
     public static boolean validateImageName(String imageName) {
-        return imageName != null && IMAGE_NAME_PATTERN.matcher(imageName).matches();
+        return imageName != null && IMAGE_NAME_PATTERN.matcher(imageName).matches() && imageName.length() <= MAX_IMAGE_NAME_LENGTH;
     }
 
     public static boolean validateEmail(String email) {
@@ -29,7 +36,7 @@ public class ValidationUtils {
     }
 
     public static boolean validatePassword(String password) {
-        return password != null && PASSWORD_PATTERN.matcher(password).matches();
+        return password != null;
     }
 
     public static boolean validateName(String name) {

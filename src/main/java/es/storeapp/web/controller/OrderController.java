@@ -47,9 +47,9 @@ public class OrderController {
 
     @Autowired
     ErrorHandlingUtils errorHandlingUtils;
-    
+
     @GetMapping(Constants.ORDERS_ENDPOINT)
-    public String doGetOrdersPage(@SessionAttribute(Constants.USER_SESSION) User user, 
+    public String doGetOrdersPage(@SessionAttribute(Constants.USER_SESSION) User user,
                                   Model model, Locale locale) {
         try {
             model.addAttribute(Constants.ORDERS, orderService.findByUserById(user.getUserId()));
@@ -60,14 +60,28 @@ public class OrderController {
     }
 
     @GetMapping(Constants.ORDER_ENDPOINT)
-    public String doGetOrderPage(@SessionAttribute(Constants.USER_SESSION) User user, 
-                                 @PathVariable() Long id,
-                                 Model model, 
+    public String doGetOrderPage(@SessionAttribute(Constants.USER_SESSION) User user,
+                                 @PathVariable Long id,
+                                 Model model,
                                  Locale locale) {
+        if (id == null || id <= 0) {
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.INVALID_ORDER_ID, null, locale));
+            return Constants.ERROR_PAGE;  // Redirect to a generic error page
+        }
+
         try {
-            model.addAttribute(Constants.ORDER, orderService.findById(id));
+            Order order = orderService.findById(id);
+            if (!order.getUser().getUserId().equals(user.getUserId())) {
+                model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+                return Constants.ERROR_PAGE;  // Unauthorized access error page
+            }
+            model.addAttribute(Constants.ORDER, order);
         } catch (InstanceNotFoundException ex) {
             return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
+        } catch (Exception ex) {
+            logger.error("Error retrieving order page for order ID {}: {}", id, ex.getMessage());
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            return Constants.ERROR_PAGE;
         }
         return Constants.ORDER_PAGE;
     }
@@ -122,61 +136,88 @@ public class OrderController {
                                 RedirectAttributes redirectAttributes,
                                 Locale locale, Model model) {
         if (result.hasErrors()) {
-            return errorHandlingUtils.handleInvalidFormError(result, 
-                Constants.CREATE_ORDER_INVALID_PARAMS_MESSAGE, model, locale);
+            return errorHandlingUtils.handleInvalidFormError(result,
+                    Constants.CREATE_ORDER_INVALID_PARAMS_MESSAGE, model, locale);
         }
+
+        if (products == null || products.length == 0) {
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            return Constants.ERROR_PAGE;
+        }
+
         Order order;
         try {
-            order = orderService.create(user, orderForm.getName(), orderForm.getAddress(), orderForm.getPrice(), 
+            order = orderService.create(user, orderForm.getName(), orderForm.getAddress(), orderForm.getPrice(),
                     Arrays.asList(products));
         } catch (InstanceNotFoundException ex) {
             return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
+        } catch (Exception ex) {
+            logger.error("Error creating order for user ID {}: {}", user.getUserId(), ex.getMessage());
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            return Constants.ERROR_PAGE;
         }
-        String message = messageSource.getMessage(Constants.ORDER_CREATED_MESSAGE,
-                new Object[]{orderForm.getName()}, locale);
+
+        String message = messageSource.getMessage(Constants.ORDER_CREATED_MESSAGE, new Object[]{orderForm.getName()}, locale);
         redirectAttributes.addFlashAttribute(Constants.SUCCESS_MESSAGE, message);
         shoppingCart.clear();
-        if(orderForm.getPayNow() != null && orderForm.getPayNow()) {
-            return Constants.SEND_REDIRECT + MessageFormat.format(Constants.ORDER_PAYMENT_ENDPOINT_TEMPLATE, 
-                order.getOrderId());
+
+        if (orderForm.getPayNow() != null && orderForm.getPayNow()) {
+            return Constants.SEND_REDIRECT + MessageFormat.format(Constants.ORDER_PAYMENT_ENDPOINT_TEMPLATE, order.getOrderId());
         }
         return Constants.SEND_REDIRECT + Constants.ORDERS_ENDPOINT;
     }
 
+
     @PostMapping(Constants.ORDER_PAYMENT_ENDPOINT)
     public String doPayOrder(@Valid @ModelAttribute(Constants.ORDER_FORM) PaymentForm paymentForm,
                              BindingResult result,
-                             @PathVariable() Long id,
+                             @PathVariable Long id,
                              @SessionAttribute(Constants.USER_SESSION) User user,
-                             HttpSession session, 
+                             HttpSession session,
                              RedirectAttributes redirectAttributes,
-                            Locale locale, 
-                            Model model) throws InvalidStateException {
+                             Locale locale,
+                             Model model) throws InvalidStateException {
         if (result.hasErrors()) {
-            return errorHandlingUtils.handleInvalidFormError(result, 
-                Constants.PAY_ORDER_INVALID_PARAMS_MESSAGE, model, locale);
+            return errorHandlingUtils.handleInvalidFormError(result,
+                    Constants.PAY_ORDER_INVALID_PARAMS_MESSAGE, model, locale);
         }
+
+        if (id == null || id <= 0) {
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.INVALID_ORDER_ID, null, locale));
+            return Constants.ERROR_PAGE;
+        }
+
         Order order;
         try {
-            if(paymentForm.getDefaultCreditCard() != null && paymentForm.getDefaultCreditCard()) {
+            if (paymentForm.getDefaultCreditCard() != null && paymentForm.getDefaultCreditCard()) {
                 CreditCard card = user.getCard();
+                if (card == null) {
+                    model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.NO_SAVED_CARD_MESSAGE, null, locale));
+                    return Constants.ERROR_PAGE;
+                }
                 order = orderService.pay(user, id, card.getCard(), card.getCvv(), card.getExpirationMonth(),
                         card.getExpirationYear(), false);
             } else {
                 order = orderService.pay(user, id, paymentForm.getCreditCard(), paymentForm.getCvv(),
                         paymentForm.getExpirationMonth(), paymentForm.getExpirationYear(), paymentForm.getSave());
-                if(paymentForm.getSave() != null && paymentForm.getSave()) {
-                    session.setAttribute(Constants.USER_SESSION, user);
-                }   
+                if (Boolean.TRUE.equals(paymentForm.getSave())) {
+                    session.setAttribute(Constants.USER_SESSION, user);  // Update session with new card info if saved
+                }
             }
         } catch (InstanceNotFoundException ex) {
             return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
+        } catch (Exception ex) {
+            logger.error("Error processing payment for order ID {}: {}", id, ex.getMessage());
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            return Constants.ERROR_PAGE;
         }
-        String message = messageSource.getMessage(Constants.ORDER_PAYMENT_COMPLETE_MESSAGE, new Object[0], locale);
+
+        String message = messageSource.getMessage(Constants.ORDER_PAYMENT_COMPLETE_MESSAGE, null, locale);
         redirectAttributes.addFlashAttribute(Constants.SUCCESS_MESSAGE, message);
         redirectAttributes.addFlashAttribute(Constants.ORDER, order);
         return Constants.SEND_REDIRECT + MessageFormat.format(Constants.ORDER_ENDPOINT_TEMPLATE, order.getOrderId());
     }
+
     
     @PostMapping(Constants.ORDER_CANCEL_ENDPOINT)
     public String doCancelOrder(@PathVariable() Long id, 
@@ -184,6 +225,12 @@ public class OrderController {
                                 RedirectAttributes redirectAttributes,
                                 Locale locale, 
                                 Model model) throws InvalidStateException {
+
+        if (id == null || id <= 0) {
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.INVALID_ORDER_ID, null, locale));
+            return Constants.ERROR_PAGE;
+        }
+
         Order order;
         try {
             order = orderService.cancel(user, id);
