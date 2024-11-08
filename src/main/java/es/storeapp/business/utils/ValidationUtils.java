@@ -8,8 +8,8 @@ public class ValidationUtils {
 
     private static final Pattern CREDIT_CARD_PATTERN = Pattern.compile("^[0-9]{16}$");  // Example: 16-digit numbers only
     private static final Pattern CVV_PATTERN = Pattern.compile("^[0-9]{3,4}$");  // CVV 3-4 digits
-    private static final int MIN_EXPIRATION_YEAR = 2023;  // Example current year
-    private static final int MAX_EXPIRATION_YEAR = 2050;  // Arbitrary upper limit
+    private static final int MIN_EXPIRATION_YEAR = 2023;
+    private static final int MAX_EXPIRATION_YEAR = 2050;
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
     private static final Pattern IMAGE_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9-_]+\\.(jpg|jpeg|png)$");

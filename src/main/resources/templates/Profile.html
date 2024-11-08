@@ -59,7 +59,7 @@
                               <input th:field="*{name}" type="text" class="form-control" id="name"
                                      th:errorclass="error"
                                      th:placeholder="#{profile.input.name.placeholder}"
-                                     data-validation="length alphanumeric"
+                                     data-validation="length alphanumeric custom_name"
                                      data-validation-length="min4"
                                      data-validation-error-msg-container="#input-name-error"
                                      th:attr="data-validation-error-msg=#{profile.input.name.validation}">
@@ -81,7 +81,7 @@
                                      th:placeholder="#{profile.input.email.placeholder}"
                                      th:errorclass="error"
                                      data-validation-error-msg-container="#input-email-error"
-                                     data-validation="email"
+                                     data-validation="custom_email"
                                      th:attr="data-validation-error-msg=#{profile.input.email.validation}">
                            </div>
                            <div class="d-none d-sm-block col-sm-3">
@@ -104,7 +104,7 @@
                                      id="password_confirmation" name="password_confirmation"
                                      th:placeholder="#{profile.input.password.placeholder}"
                                      data-validation-error-msg-container="#input-password-confirmation-error"
-                                     data-validation="length" data-validation-length="min4"
+                                     data-validation="custom_password"
                                      th:attr="data-validation-error-msg=#{profile.input.password.validation}">
                            </div>
                         </div>
@@ -138,7 +138,7 @@
                               <textarea th:field="*{address}" class="form-control" id="address" name="address" rows="3"
                                         th:errorclass="error"
                                         data-validation-error-msg-container="#input-address-error"
-                                        data-validation="required"
+                                        data-validation="required custom_address"
                                  th:attr="data-validation-error-msg=#{profile.input.address.validation}">
                               </textarea>
                            </div>

@@ -39,7 +39,7 @@
                                      th:placeholder="#{profile.input.email.placeholder}"
                                      th:errorclass="error"
                                      data-validation-error-msg-container="#input-email-error"
-                                     data-validation="email"
+                                     data-validation="custom_email"
                                      th:attr="data-validation-error-msg=#{profile.input.email.validation}">
                            </div>
                         </div>
@@ -58,7 +58,7 @@
                                      id="password" name="password"
                                      th:placeholder="#{login.input.password.placeholder}"
                                      data-validation-error-msg-container="#input-password-error"
-                                     data-validation="length" data-validation-length="min4"
+                                     data-validation="custom_password"
                                      th:attr="data-validation-error-msg=#{login.input.password.validation}">
                            </div>
                         </div>

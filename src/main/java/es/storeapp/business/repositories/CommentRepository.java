@@ -2,6 +2,8 @@ package es.storeapp.business.repositories;
 
 import es.storeapp.business.entities.Comment;
 import java.text.MessageFormat;
+import java.util.List;
+
 import jakarta.persistence.Query;
 import org.springframework.stereotype.Repository;
 
@@ -27,6 +29,11 @@ public class CommentRepository extends AbstractRepository<Comment> {
         Query query = entityManager.createQuery(FIND_BY_USER_AND_PRODUCT_QUERY);
         query.setParameter("userId", userId);  // Set the userId safely
         query.setParameter("productId", productId);  // Set the productId safely
-        return (Comment) query.getSingleResult();
+
+        List<Comment> results = query.getResultList();
+        if (results.isEmpty()) {
+            return null;  // Return null if there are no comments
+        }
+        return results.getFirst();  // Safely return the first comment
     }
 }

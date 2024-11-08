@@ -70,7 +70,7 @@
                                      data-inputmask="'mask': '9999999999999999'"
                                      th:errorclass="error"
                                      data-validation-error-msg-container="#input-card-error"
-                                     data-validation="required creditcard"
+                                     data-validation="required custom_credit_card"
                                      th:attr="data-validation-error-msg=#{payment.input.card.validation}"
                                      th:disabled="${session['user'].card != null}"></input>
                            </div>
@@ -87,7 +87,7 @@
                                      data-inputmask="'mask': '999'"
                                      th:errorclass="error" maxlength="3"
                                      data-validation-error-msg-container="#input-cvv-error"
-                                     data-validation="cvv"
+                                     data-validation="custom_cvv"
                                      th:attr="data-validation-error-msg=#{payment.input.cvv.validation}"
                                      th:disabled="${session['user'].card != null}"></input>
                            </div>
