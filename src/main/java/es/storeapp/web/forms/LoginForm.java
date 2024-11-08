@@ -2,6 +2,7 @@ package es.storeapp.web.forms;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 
 public class LoginForm {
@@ -15,6 +16,7 @@ public class LoginForm {
     @Size(min = 1, message = "Password cannot be empty")
     private String password;
 
+    @AssertTrue(message = "Remember Me must be true or false")
     private Boolean rememberMe;
 
     public String getEmail() {
