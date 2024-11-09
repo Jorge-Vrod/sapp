@@ -10,6 +10,8 @@ public class CSPInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
         throws Exception {
         response.setHeader("Content-Security-Policy", "default-src * 'self'; img-src * 'self' data:; script-src  * 'self' 'unsafe-eval' 'unsafe-inline'; style-src   * 'self' 'unsafe-inline';");
+        response.addHeader("X-Frame-Options","SAMEORIGIN");
+        response.setHeader("X-Content-Type-Options", "nosniff");
         return true;
     }
     
