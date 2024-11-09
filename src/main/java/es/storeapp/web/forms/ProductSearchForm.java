@@ -4,9 +4,10 @@ import jakarta.validation.constraints.*;
 
 public class ProductSearchForm {
     
+    // VULN: CWE 20 - Validación de datos de entrada
+
     @NotNull(message = "La categoría no puede ser nula")
-    @Size(min = 3, max = 50, message = "La categoría debe tener entre 3 y 50 caracteres")
-    @Pattern(regexp = "^[a-zA-Z0-9\\s\\-]+$", message = "La categoría solo puede contener letras, números, espacios y guiones")
+    @Size(max = 50, message = "La categoría no puede exceder 50 caracteres")
     private String category;
 
     public String getCategory() {

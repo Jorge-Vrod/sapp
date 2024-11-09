@@ -5,26 +5,25 @@ import org.springframework.web.multipart.MultipartFile;
 
 public class UserProfileForm {
 
-    @NotNull(message = "El nombre no puede ser nulo")
-    @Size(min = 4, max = 100, message = "El nombre debe tener entre 4 y 100 caracteres")
-    @Pattern(regexp = "^[a-zA-Z0-9 ]+$", message = "El nombre solo puede contener letras, números y espacios")
+    // VULN: CWE 20 - Validación de datos de entrada
+
+    @NotNull(message = "Name cannot be null")
+    @Size(max = 50, message = "Name cannot have more than 50 characters")
     private String name;
 
-    @NotNull(message = "El correo electrónico no puede ser nulo")
-    @Email(message = "El correo electrónico debe tener un formato válido")
+    @NotNull(message = "Email cannot be null")
+    @Size(min = 1, message = "Email cannot be empty")
+    @Pattern(regexp = "^[A-Za-z0-9+_.-]+@(.+)$", message = "Invalid email format")
     private String email;
 
-    @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
-    @Pattern(regexp = "(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{6,}", 
-             message = "La contraseña debe contener al menos una letra mayúscula, una minúscula, un número y un carácter especial")
+    @NotNull(message = "Password cannot be null")
+    @Size(min = 4, message = "Password cannot be empty and must have at least 4 characters")
     private String password;
 
     @NotNull(message = "La dirección no puede ser nula")
-    @Size(min = 5, max = 255, message = "La dirección debe tener entre 5 y 255 caracteres")
-    @Pattern(regexp = "^[a-zA-Z0-9 ,.-]+$", message = "La dirección contiene caracteres no permitidos")
+    @Size(max = 100, message = "La dirección no puede tener más de 100 caracteres")
     private String address;
 
-    @Size(max = 5242880, message = "El tamaño de la imagen no puede superar 5 MB")
     private MultipartFile image;
 
     public UserProfileForm() {
