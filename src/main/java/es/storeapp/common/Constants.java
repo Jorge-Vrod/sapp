@@ -30,6 +30,9 @@ public class Constants {
     public static final String PRODUCT_ALREADY_IN_SHOPPING_CART = "product.already.in.cart";
     public static final String PRODUCT_NOT_IN_SHOPPING_CART = "product.not.in.cart";
     public static final String EMPTY_SHOPPING_CART = "shopping.cart.empty";
+
+    public static final String ERROR_CREATING_COMMENT = "product.comment.error";
+
     public static final String PRODUCT_COMMENT_CREATED = "product.comment.created";
 
     public static final String INVALID_PRODUCT_ID = "product.invalid.id";
@@ -49,7 +52,9 @@ public class Constants {
     public static final String REGISTRATION_SUCCESS_MESSAGE = "registration.success";
     public static final String PROFILE_UPDATE_SUCCESS = "profile.updated.success";
     public static final String CHANGE_PASSWORD_SUCCESS = "change.password.success";
-    
+
+    public static final String ERROR_MESSAGE = "errorMessage";
+
     public static final String MAIL_SUBJECT_MESSAGE = "mail.subject";
     public static final String MAIL_TEMPLATE_MESSAGE = "mail.template";
     public static final String MAIL_HTML_NOT_SUPPORTED_MESSAGE = "mail.html.not.supported";
@@ -115,7 +120,6 @@ public class Constants {
     public static final String NEW_PARAM_VALUE = "&";
     public static final String USER_SESSION = "user";
     public static final String SHOPPING_CART_SESSION = "shoppingCart";
-    public static final String ERROR_MESSAGE = "errorMessage";
     public static final String EXCEPTION = "exception";
     public static final String WARNING_MESSAGE = "warningMessage";
     public static final String SUCCESS_MESSAGE = "successMessage";

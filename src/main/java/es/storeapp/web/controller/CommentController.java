@@ -66,9 +66,7 @@ public class CommentController {
         } catch (InstanceNotFoundException ex) {
             return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
         } catch (Exception ex) {
-            logger.error("Error loading comment page for product ID {}: {}", id, ex.getMessage());
-            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
-            return Constants.ERROR_PAGE;
+            return errorHandlingUtils.handleGenericException(ex, model, locale);
         }
 
         return Constants.COMMENT_PAGE;
@@ -96,7 +94,7 @@ public class CommentController {
             return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
         } catch (Exception ex) {
             logger.error("Error creating comment for product ID {}: {}", commentForm.getProductId(), ex.getMessage());
-            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_CREATING_COMMENT, null, locale));
             return Constants.ERROR_PAGE;
         }
     }

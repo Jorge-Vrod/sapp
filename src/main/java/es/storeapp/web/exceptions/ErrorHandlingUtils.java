@@ -61,6 +61,12 @@ public class ErrorHandlingUtils {
         model.addAttribute(Constants.EXCEPTION, e);
         return Constants.ERROR_PAGE;
     }
+
+    public String handleGenericException(Exception e, Model model, Locale locale) {
+        logger.error(e.getMessage(), e);
+        model.addAttribute(Constants.ERROR_MESSAGE, e.getMessage());
+        return Constants.ERROR_PAGE;
+    }
     
     public String handleUnexpectedException(Exception e, Model model) {
         logger.error(e.getMessage(), e);

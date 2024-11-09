@@ -6,8 +6,7 @@ import es.storeapp.business.services.ProductService;
 import es.storeapp.common.Constants;
 import es.storeapp.web.exceptions.ErrorHandlingUtils;
 import es.storeapp.web.session.ShoppingCart;
-import java.text.MessageFormat;
-import java.util.Iterator;
+
 import java.util.List;
 import java.util.Locale;
 import org.slf4j.Logger;
