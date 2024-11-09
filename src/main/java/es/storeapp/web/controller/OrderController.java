@@ -72,7 +72,7 @@ public class OrderController {
         try {
             Order order = orderService.findById(id);
             if (!order.getUser().getUserId().equals(user.getUserId())) {
-                model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+                model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.INVALID_ORDER_USER, null, locale));
                 return Constants.ERROR_PAGE;  // Unauthorized access error page
             }
             model.addAttribute(Constants.ORDER, order);
@@ -80,7 +80,7 @@ public class OrderController {
             return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
         } catch (Exception ex) {
             logger.error("Error retrieving order page for order ID {}: {}", id, ex.getMessage());
-            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.GENERIC_ERROR, null, locale));
             return Constants.ERROR_PAGE;
         }
         return Constants.ORDER_PAGE;
@@ -141,7 +141,7 @@ public class OrderController {
         }
 
         if (products == null || products.length == 0) {
-            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.INVALID_PRODUCT_LIST, null, locale));
             return Constants.ERROR_PAGE;
         }
 
@@ -153,7 +153,7 @@ public class OrderController {
             return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
         } catch (Exception ex) {
             logger.error("Error creating order for user ID {}: {}", user.getUserId(), ex.getMessage());
-            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.GENERIC_ERROR, null, locale));
             return Constants.ERROR_PAGE;
         }
 
@@ -208,7 +208,7 @@ public class OrderController {
             return errorHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
         } catch (Exception ex) {
             logger.error("Error processing payment for order ID {}: {}", id, ex.getMessage());
-            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.GENERIC_ERROR, null, locale));
             return Constants.ERROR_PAGE;
         }
 

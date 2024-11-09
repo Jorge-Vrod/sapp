@@ -75,7 +75,7 @@ public class ShoppingCartController {
             return exceptionHandlingUtils.handleInstanceNotFoundException(ex, model, locale);
         } catch (Exception ex) {
             logger.error("Error adding product ID {} to cart: {}", id, ex.getMessage());
-            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_ADDING_PRODUCT_TO_CART, null, locale));
             return Constants.ERROR_PAGE;
         }
 
@@ -112,7 +112,7 @@ public class ShoppingCartController {
 
         } catch (Exception ex) {
             logger.error("Error removing product ID {} from cart: {}", id, ex.getMessage());
-            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_MESSAGE, null, locale));
+            model.addAttribute(Constants.ERROR_MESSAGE, messageSource.getMessage(Constants.ERROR_REMOVING_PRODUCT_FROM_CART, null, locale));
             return Constants.ERROR_PAGE;
         }
 

@@ -8,7 +8,7 @@ public class CSPInterceptor implements HandlerInterceptor {
     
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
-        throws Exception {
+            throws Exception {
 
         // Política de Seguridad de Contenido más estricta
         response.setHeader("Content-Security-Policy", 
@@ -24,6 +24,12 @@ public class CSPInterceptor implements HandlerInterceptor {
             "form-action 'self'; " +  // Limitar envíos de formularios a mismo origen
             "base-uri 'self';" // Restringe el uso de <base> para evitar cambios maliciosos en URLs relativas
         );
+
+        // Añadir el encabezado X-Frame-Options para prevenir ataques de clickjacking
+        response.addHeader("X-Frame-Options", "SAMEORIGIN");
+
+        // Añadir el encabezado X-Content-Type-Options para prevenir la interpretación incorrecta del tipo de contenido
+        response.setHeader("X-Content-Type-Options", "nosniff");
 
         return true;
     }
