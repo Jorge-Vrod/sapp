@@ -5,25 +5,39 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 public class CSPInterceptor implements HandlerInterceptor {
-    
+    /*
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
-            throws Exception {
-
-        // Política de Seguridad de Contenido más estricta
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        // Establecer Content-Security-Policy
         response.setHeader("Content-Security-Policy", 
             "default-src 'self'; " +  // Solo contenido de mismo origen
-            "img-src 'self' data:; " +  // Imágenes solo desde el mismo origen y URLs de datos
-            "script-src 'self' 'nonce-{random_nonce}' 'strict-dynamic'; " +  // Solo scripts de mismo origen, usar nonce para permitir scripts dinámicos seguros
-            "style-src 'self' 'unsafe-inline'; " +  // Habilita solo estilos internos de mismo origen
+            "img-src 'self'; " +  // Se puede quitar el data: xq no hace falta soportar imagenes externas
+            "script-src 'self' 'unsafe-inline'; " +  // Se puede quitar unsafe-eval para evitar ataques XSS, pero si se intenta quitar unsafe-inline no funcionar los scripts (ejem: ratings)
+            "style-src 'self' 'unsafe-inline'; " +  // Si se quita el unsafe cambia tamaño svg de la página y se desplazan muchos elementos
+            "object-src 'none'; " +  // Evitar objetos, applets, etc., en la página
             "font-src 'self'; " +  // Fuentes solo del mismo origen
-            "connect-src 'self'; " +  // Limitado a solicitudes HTTP a mismo dominio
-            "frame-src 'none'; " +  // No se permiten frames
-            "object-src 'none'; " +  // Prohibir objetos, applets y embebidos
-            "child-src 'none'; " +  // Prohibir sub-frames
-            "form-action 'self'; " +  // Limitar envíos de formularios a mismo origen
-            "base-uri 'self';" // Restringe el uso de <base> para evitar cambios maliciosos en URLs relativas
-        );
+            "frame-ancestors 'none';"); // Evitar ser cargado en un iframe
+
+        // Permitir imágenes solo de tipo SVG
+        response.setHeader("X-Content-Type-Options", "nosniff");
+
+        // Añadir el encabezado X-Frame-Options para prevenir ataques de clickjacking
+        response.addHeader("X-Frame-Options", "SAMEORIGIN");
+
+        response.setHeader("Content-Security-Policy", "upgrade-insecure-requests;");
+
+
+        return true;
+    }*/
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+        throws Exception {
+        response.setHeader("Content-Security-Policy", 
+            "default-src 'self'; " +  // Solo contenido de mismo origen
+            "img-src * 'self' data:; " +
+            "script-src  * 'self' 'unsafe-eval' 'unsafe-inline'; " +
+            "style-src   * 'self' 'unsafe-inline';");
 
         // Añadir el encabezado X-Frame-Options para prevenir ataques de clickjacking
         response.addHeader("X-Frame-Options", "SAMEORIGIN");
@@ -33,5 +47,7 @@ public class CSPInterceptor implements HandlerInterceptor {
 
         return true;
     }
+
+    
     
 }
