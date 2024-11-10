@@ -15,7 +15,18 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             // Habilitar CSRF pero ignorar recursos estáticos y WebJars
-            .csrf().disable()
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers(
+                    "/resources/fonts/**",
+                    "/fonts/**",
+                    "/css/**",             // CSS adicionales
+                    "/js/**",               // JS adicionales
+                    "/static/**",
+                    Constants.EXTERNAL_RESOURCES,    // /resources/**
+                    Constants.LIBS_RESOURCES         // /webjars/**
+                )
+            )
+
 
             // Permitir acceso sin autenticación a recursos estáticos, rutas públicas y formularios de login/logout
             .authorizeHttpRequests(authorize -> authorize
@@ -26,6 +37,13 @@ public class SecurityConfig {
                     Constants.REGISTRATION_ENDPOINT,
                     Constants.RESET_PASSWORD_ENDPOINT,
                     Constants.SEND_EMAIL_ENDPOINT,
+                    Constants.PRODUCTS_ENDPOINT,
+                    Constants.PRODUCT_ENDPOINT, 
+                    "/resources/fonts/**",
+                    "/fonts/**",
+                    "/css/**",             // CSS adicionales
+                    "/js/**",               // JS adicionales
+                    "/static/**",
                     Constants.EXTERNAL_RESOURCES,    // /resources/**
                     Constants.LIBS_RESOURCES         // /webjars/**
                 ).permitAll()  // Permite el acceso a estas URLs sin autenticación
@@ -45,15 +63,14 @@ public class SecurityConfig {
                 .requestMatchers(Constants.ORDER_CANCEL_ENDPOINT).authenticated()
 
                 // Rutas de productos y carrito, pueden estar accesibles a usuarios no autenticados en algunos casos, o a los autenticados
-                .requestMatchers(Constants.PRODUCTS_ENDPOINT).permitAll()
-                .requestMatchers(Constants.PRODUCT_ENDPOINT).permitAll()
                 .requestMatchers(Constants.CART_ENDPOINT).authenticated()
                 .requestMatchers(Constants.CART_ADD_PRODUCT_ENDPOINT).authenticated()
                 .requestMatchers(Constants.CART_REMOVE_PRODUCT_ENDPOINT).authenticated()
                 .requestMatchers(Constants.COMMENT_PRODUCT_ENDPOINT).authenticated()
                 
                 // Otras rutas públicas o protegidas según sea necesario
-                .anyRequest().authenticated()  // Para cualquier otra URL, es necesario estar autenticado
+                //.anyRequest().authenticated()  // Para cualquier otra URL, es necesario estar autenticado
+                .anyRequest().permitAll()       // DEBE ESTAR EN AUTHENTICATED; ESTO ES PARA TESTEAR
             )
 
             // Configuración de login
@@ -68,7 +85,8 @@ public class SecurityConfig {
                 .permitAll()  // Permite acceso a la página de logout
                 .invalidateHttpSession(true) // Invalida la sesión al hacer logout
                 .clearAuthentication(true)   // Elimina la autenticación al cerrar sesión
-            );
+            )
+            ;
 
         return http.build();
     }
