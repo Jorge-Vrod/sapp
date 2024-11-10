@@ -105,6 +105,7 @@ public class OrderController {
     public String doCompleteOrder(@SessionAttribute(Constants.SHOPPING_CART_SESSION) ShoppingCart shoppingCart,
                                   Model model, 
                                   Locale locale) {
+
         OrderForm orderForm = new OrderForm();
         orderForm.setPrice(shoppingCart.getTotalPrice());
         List<Product> products = new ArrayList<>(shoppingCart.getProducts());
@@ -119,6 +120,7 @@ public class OrderController {
                         products.getFirst().getCategory().getName(), products.size() - 1}, locale);
             orderForm.setName(orderName);
         }
+
         if(logger.isDebugEnabled()) {
             logger.debug(MessageFormat.format("Go to complete order page {0}", orderForm.getName()));
         }
@@ -138,6 +140,10 @@ public class OrderController {
         if (result.hasErrors()) {
             return errorHandlingUtils.handleInvalidFormError(result,
                     Constants.CREATE_ORDER_INVALID_PARAMS_MESSAGE, model, locale);
+        }
+
+        if (orderForm.getAddress() == null || orderForm.getAddress().trim().isEmpty()) {
+            orderForm.setAddress(user.getAddress());
         }
 
         if (products == null || products.length == 0) {

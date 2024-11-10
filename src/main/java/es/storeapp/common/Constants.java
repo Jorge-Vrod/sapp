@@ -5,7 +5,10 @@ public class Constants {
 
     private Constants() {
     }
-    
+    public static final String DEFAULT_ADDRESS = "default";
+
+
+
     /* Messages */
     public static final String AUTH_INVALID_USER_MESSAGE = "auth.invalid.user";
     public static final String AUTH_INVALID_PASSWORD_MESSAGE = "auth.invalid.password";

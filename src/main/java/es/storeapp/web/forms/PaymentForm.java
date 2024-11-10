@@ -6,7 +6,6 @@ public class PaymentForm {
 
     // VULN: CWE 20 - Validación de datos de entrada
     
-    @NotNull(message = "Debe indicar si es la tarjeta predeterminada")
     private Boolean defaultCreditCard;
     
     @NotNull(message = "El número de tarjeta de crédito no puede ser nulo")
@@ -14,7 +13,6 @@ public class PaymentForm {
     private String creditCard;
     
     @NotNull(message = "El CVV no puede ser nulo")
-    @Pattern(regexp = "^\\d{3,4}$", message = "El CVV debe tener entre 3 y 4 dígitos y contener solo números")
     private Integer cvv;
     
     @NotNull(message = "El mes de expiración no puede ser nulo")
@@ -27,7 +25,6 @@ public class PaymentForm {
     @Max(value = 2050, message = "El año de expiración debe ser menor o igual a 2050")
     private Integer expirationYear;
     
-    @NotNull(message = "Debe indicar si desea guardar la tarjeta")
     private Boolean save;
 
     public Boolean getDefaultCreditCard() {

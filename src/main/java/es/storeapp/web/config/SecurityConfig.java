@@ -26,9 +26,9 @@ public class SecurityConfig {
                     Constants.EXTERNAL_RESOURCES,    // /resources/**
                     Constants.LIBS_RESOURCES         // /webjars/**
                 )
-            )
-
+            );
 /*
+
             // Permitir acceso sin autenticación a recursos estáticos, rutas públicas y formularios de login/logout
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(
@@ -74,20 +74,13 @@ public class SecurityConfig {
                 .anyRequest().permitAll()       // DEBE ESTAR EN AUTHENTICATED; ESTO ES PARA TESTEAR
             )
 
-            // Configuración de login
-            .formLogin(form -> form
-                .loginPage(Constants.LOGIN_ENDPOINT)  // Ruta de login
-                .permitAll()  // Permite acceso a la página de login
-            )
-            
             // Configuración de logout
             .logout(logout -> logout
                 .logoutUrl(Constants.LOGOUT_ENDPOINT)  // Ruta de logout
                 .permitAll()  // Permite acceso a la página de logout
                 .invalidateHttpSession(true) // Invalida la sesión al hacer logout
                 .clearAuthentication(true)   // Elimina la autenticación al cerrar sesión
-            )*/
-            ;
+            );*/
 
         return http.build();
     }

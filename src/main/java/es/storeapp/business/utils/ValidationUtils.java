@@ -7,7 +7,6 @@ import org.apache.commons.lang3.StringUtils;
 public class ValidationUtils {
 
     private static final Pattern CREDIT_CARD_PATTERN = Pattern.compile("^[0-9]{16}$");  // Example: 16-digit numbers only
-    private static final Pattern CVV_PATTERN = Pattern.compile("^[0-9]{3,4}$");  // CVV 3-4 digits
     private static final int MIN_EXPIRATION_YEAR = 2023;
     private static final int MAX_EXPIRATION_YEAR = 2050;
 
@@ -69,7 +68,7 @@ public class ValidationUtils {
      * Validates CVV format.
      */
     public static boolean validateCVV(Integer cvv) {
-        return cvv != null && CVV_PATTERN.matcher(cvv.toString()).matches();
+        return cvv != null && cvv <= 999 && cvv >= 0;
     }
 
     /**

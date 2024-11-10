@@ -13,7 +13,6 @@ public class OrderForm {
     @Min(value = 0, message = "El precio debe ser un valor positivo")
     private int price;
     
-    @NotNull(message = "La dirección no puede ser nula")
     @Size(max = 100, message = "La dirección no puede tener más de 100 caracteres")
     private String address;
     

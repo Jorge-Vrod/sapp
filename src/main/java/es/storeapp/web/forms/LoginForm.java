@@ -18,7 +18,6 @@ public class LoginForm {
     @Size(min = 4, message = "Password cannot be empty and must have at least 4 characters")
     private String password;
 
-    @AssertTrue(message = "Remember Me must be true or false")
     private Boolean rememberMe;
 
 
