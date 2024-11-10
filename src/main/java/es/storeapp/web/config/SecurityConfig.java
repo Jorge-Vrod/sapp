@@ -1,3 +1,4 @@
+//FALTA ARREGLAR ENDPOINTS
 package es.storeapp.web.config;
 
 import es.storeapp.common.Constants;
@@ -27,7 +28,7 @@ public class SecurityConfig {
                 )
             )
 
-
+/*
             // Permitir acceso sin autenticación a recursos estáticos, rutas públicas y formularios de login/logout
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(
@@ -85,7 +86,7 @@ public class SecurityConfig {
                 .permitAll()  // Permite acceso a la página de logout
                 .invalidateHttpSession(true) // Invalida la sesión al hacer logout
                 .clearAuthentication(true)   // Elimina la autenticación al cerrar sesión
-            )
+            )*/
             ;
 
         return http.build();
@@ -96,3 +97,4 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
+
