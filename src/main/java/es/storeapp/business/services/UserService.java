@@ -80,6 +80,7 @@ public class UserService {
     }
 
 
+
     @Transactional
     public void sendResetPasswordEmail(String email, String url, Locale locale) throws AuthenticationException, ServiceException {
         if (!ValidationUtils.validateEmail(email)) {
@@ -135,6 +136,7 @@ public class UserService {
             throw exceptionGenerationUtils.toDuplicatedResourceException(Constants.EMAIL_FIELD, email, Constants.DUPLICATED_INSTANCE_MESSAGE);
         }
 
+        // VULN: Utiliza PasswordEncoder (que debe ser BCryptPasswordEncoder)
         String encodedPassword = passwordEncoder.encode(rawPassword);
         User user = userRepository.create(new User(name, email, encodedPassword, address, image));
 
@@ -143,6 +145,7 @@ public class UserService {
         }
         return user;
     }
+
 
 
     @Transactional
