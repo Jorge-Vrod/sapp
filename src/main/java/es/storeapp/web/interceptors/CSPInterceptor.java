@@ -37,7 +37,13 @@ public class CSPInterceptor implements HandlerInterceptor {
             "default-src 'self'; " +  // Solo contenido de mismo origen
             "img-src * 'self' data:; " +
             "script-src  * 'self' 'unsafe-eval' 'unsafe-inline'; " +
-            "style-src   * 'self' 'unsafe-inline';");
+            "style-src   * 'self' 'unsafe-inline';" +
+            "object-src 'none'; " + 
+            "font-src 'self'; " + 
+            "media-src 'self'; " +
+            "worker-src 'self'; " +
+            "base-uri 'self'; " +
+            "frame-ancestors 'none';"); 
 
         // Añadir el encabezado X-Frame-Options para prevenir ataques de clickjacking
         response.addHeader("X-Frame-Options", "SAMEORIGIN");
