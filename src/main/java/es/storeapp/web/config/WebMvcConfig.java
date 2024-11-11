@@ -1,13 +1,11 @@
 package es.storeapp.web.config;
 
+import es.storeapp.business.services.OrderService;
 import es.storeapp.business.services.UserService;
 import es.storeapp.common.ConfigurationParameters;
 import es.storeapp.common.Constants;
-import es.storeapp.web.interceptors.AuthenticatedUserInterceptor;
-import es.storeapp.web.interceptors.AutoLoginInterceptor;
-import es.storeapp.web.interceptors.CSPInterceptor;
-import es.storeapp.web.interceptors.LoggerInterceptor;
-import es.storeapp.web.interceptors.ShoppingCartInterceptor;
+import es.storeapp.web.interceptors.*;
+
 import java.io.File;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +25,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private OrderService orderService;
     
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -58,6 +59,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
             .addPathPatterns(Constants.USER_PROFILE_ALL_ENDPOINTS)
             .addPathPatterns(Constants.CHANGE_PASSWORD_ENDPOINT)
             .addPathPatterns(Constants.COMMENT_PRODUCT_ENDPOINT);
+
+        registry.addInterceptor(new ValidOrderInterceptor(orderService))
+                .addPathPatterns(Constants.ORDERS_ALL_ENDPOINTS);
     }
     
     @Override

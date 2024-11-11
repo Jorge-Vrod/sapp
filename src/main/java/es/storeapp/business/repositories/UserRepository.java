@@ -2,6 +2,9 @@ package es.storeapp.business.repositories;
 
 import es.storeapp.business.entities.User;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import org.springframework.stereotype.Repository;
@@ -21,7 +24,11 @@ public class UserRepository extends AbstractRepository<User> {
             // Use parameterized query to prevent SQL Injection
             Query query = entityManager.createQuery(FIND_USER_BY_EMAIL_QUERY);
             query.setParameter(EMAIL, email);  // Set the parameter safely
-            return (User) query.getSingleResult();
+            List<User> userList = query.getResultList();
+            if (!userList.isEmpty()) {
+                return userList.getFirst();
+            }
+            return null;
         } catch (NoResultException e) {
             logger.error(e.getMessage(), e);
             return null;
@@ -31,7 +38,7 @@ public class UserRepository extends AbstractRepository<User> {
     public boolean existsUser(String email) {
         Query query = entityManager.createQuery(COUNT_USER_BY_EMAIL_QUERY);
         query.setParameter(EMAIL, email);  // Set the parameter safely
-        return ((Long) query.getSingleResult() > 0);
+        return (!query.getResultList().isEmpty());
     }
 
     public User findByEmailAndPassword(String email, String password) {
@@ -40,7 +47,11 @@ public class UserRepository extends AbstractRepository<User> {
             Query query = entityManager.createQuery(LOGIN_QUERY);
             query.setParameter(EMAIL, email);      // Set the email parameter safely
             query.setParameter(PASSWORD, password);  // Set the password parameter safely
-            return (User) query.getSingleResult();
+            List<User> userList = query.getResultList();
+            if (!userList.isEmpty()) {
+                return userList.getFirst();
+            }
+            return null;
         } catch (NoResultException e) {
             logger.error(e.getMessage(), e);
             return null;

@@ -139,7 +139,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<Order> findByUserById(Long userId) throws InstanceNotFoundException {
         User user = userRepository.findById(userId);
-        if(logger.isDebugEnabled()) {
+        if (logger.isDebugEnabled()) {
             logger.debug(MessageFormat.format("Searching the orders of the user {0}", user.getEmail()));
         }
         return orderRepository.findByUserId(userId);

@@ -17,7 +17,7 @@ public class OrderRepository extends AbstractRepository<Order> {
     public List<Order> findByUserId(Long userId) {
         Query query = entityManager.createQuery(FIND_BY_USER_QUERY);
         query.setParameter(USER_ID, userId);  // Set the parameter safely
-        return (List<Order>) query.getResultList();
+        return query.getResultList();
     }
    
 }

@@ -232,9 +232,9 @@
                 </dependencies>
                 <configuration>
                     <driver>org.apache.derby.jdbc.EmbeddedDriver</driver>
-                    <url>jdbc:derby:work/database;create=true</url>
-                    <username>${db.username}</username>
-                    <password>${db.password}</password>
+                    <url>${spring.datasource.url};create=true</url>
+                    <username>${spring.datasource.username}</username>
+                    <password>${spring.datasource.password}</password>
                     <autocommit>true</autocommit>
                     <onError>continue</onError>
                     <srcFiles>
