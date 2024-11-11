@@ -1,16 +1,30 @@
 //FALTA ARREGLAR ENDPOINTS
 package es.storeapp.web.config;
 
+import es.storeapp.business.services.CustomUserDetailsService;
 import es.storeapp.common.Constants;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+
+
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 
 @Configuration
 public class SecurityConfig {
+
+    private final CustomUserDetailsService customUserDetailsService;
+
+    public SecurityConfig(CustomUserDetailsService customUserDetailsService) {
+        this.customUserDetailsService = customUserDetailsService;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -26,8 +40,8 @@ public class SecurityConfig {
                     Constants.EXTERNAL_RESOURCES,    // /resources/**
                     Constants.LIBS_RESOURCES         // /webjars/**
                 )
-            );
-/*
+            )
+
 
             // Permitir acceso sin autenticación a recursos estáticos, rutas públicas y formularios de login/logout
             .authorizeHttpRequests(authorize -> authorize
@@ -40,11 +54,9 @@ public class SecurityConfig {
                     Constants.SEND_EMAIL_ENDPOINT,
                     Constants.PRODUCTS_ENDPOINT,
                     Constants.PRODUCT_ENDPOINT, 
-                    "/resources/fonts/**",
+                    "/Styles.css",
                     "/fonts/**",
-                    "/css/**",             // CSS adicionales
-                    "/js/**",               // JS adicionales
-                    "/static/**",
+                    "/Scripts.js",    
                     Constants.EXTERNAL_RESOURCES,    // /resources/**
                     Constants.LIBS_RESOURCES         // /webjars/**
                 ).permitAll()  // Permite el acceso a estas URLs sin autenticación
@@ -56,23 +68,24 @@ public class SecurityConfig {
                 .requestMatchers(Constants.USER_PROFILE_IMAGE_REMOVE_ENDPOINT).authenticated()
 
                 // Rutas de ordenes, solo accesibles si el usuario está autenticado
-                .requestMatchers(Constants.ORDERS_ALL_ENDPOINTS).authenticated()
-                .requestMatchers(Constants.ORDERS_ENDPOINT).authenticated()
+                //.requestMatchers(Constants.ORDERS_ALL_ENDPOINTS).authenticated()
+                .requestMatchers(Constants.ORDERS_ENDPOINT).permitAll()
                 .requestMatchers(Constants.ORDER_ENDPOINT).authenticated()
                 .requestMatchers(Constants.ORDER_CONFIRM_ENDPOINT).authenticated()
                 .requestMatchers(Constants.ORDER_PAYMENT_ENDPOINT).authenticated()
                 .requestMatchers(Constants.ORDER_CANCEL_ENDPOINT).authenticated()
 
                 // Rutas de productos y carrito, pueden estar accesibles a usuarios no autenticados en algunos casos, o a los autenticados
-                .requestMatchers(Constants.CART_ENDPOINT).authenticated()
+                .requestMatchers(Constants.CART_ENDPOINT).permitAll()
                 .requestMatchers(Constants.CART_ADD_PRODUCT_ENDPOINT).authenticated()
                 .requestMatchers(Constants.CART_REMOVE_PRODUCT_ENDPOINT).authenticated()
                 .requestMatchers(Constants.COMMENT_PRODUCT_ENDPOINT).authenticated()
                 
                 // Otras rutas públicas o protegidas según sea necesario
                 //.anyRequest().authenticated()  // Para cualquier otra URL, es necesario estar autenticado
-                .anyRequest().permitAll()       // DEBE ESTAR EN AUTHENTICATED; ESTO ES PARA TESTEAR
+                .anyRequest().authenticated()       // DEBE ESTAR EN AUTHENTICATED; ESTO ES PARA TESTEAR
             )
+            
 
             // Configuración de logout
             .logout(logout -> logout
@@ -80,7 +93,7 @@ public class SecurityConfig {
                 .permitAll()  // Permite acceso a la página de logout
                 .invalidateHttpSession(true) // Invalida la sesión al hacer logout
                 .clearAuthentication(true)   // Elimina la autenticación al cerrar sesión
-            );*/
+            );
 
         return http.build();
     }
@@ -88,6 +101,14 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+
+    // Configuración de CustomUserDetailsService en AuthenticationManager
+    @Autowired
+    public void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(customUserDetailsService)
+            .passwordEncoder(passwordEncoder());
     }
 }
 
